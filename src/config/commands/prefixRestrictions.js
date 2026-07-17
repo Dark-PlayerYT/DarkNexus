@@ -5,36 +5,53 @@
 /** Top-level commands that cannot be invoked via prefix at all. */
 export const SLASH_ONLY_COMMANDS = new Set([
   'configwizard',
+  'kurulumsihirbazı', 
   'help',
+  'yardım',           
   'embedbuilder',
+  'embedoluştur',     
   'wipedata',
-  'apply',
+  'verilerisil',      
+  'apply',         
+  'onayla',           // Eklenen Türkçe alternatif
 ]);
 
 /** Subcommands blocked for every command when invoked via prefix. */
 export const GLOBAL_BLOCKED_SUBCOMMANDS = new Set([
   'dashboard',
+  'panel',            
   'setup',
+  'kurulum',          
 ]);
 
 /** Subcommand groups blocked for every command when invoked via prefix. */
 export const GLOBAL_BLOCKED_SUBCOMMAND_GROUPS = new Set([
-  'config',
+  'config',           
+  'ayarlar',          
 ]);
 
 /** Per-command subcommands that stay slash-only (beyond the global block list). */
 export const COMMAND_BLOCKED_SUBCOMMANDS = {
   music: new Set([
-    'shuffle',
-    'loop',
-    'seek',
-    'remove',
-    'move',
-    'clear',
-    '247',
+    'shuffle', 'karıştır', 
+    'loop', 'döngü',       
+    'seek', 'süre',        
+    'remove', 'sil',
+    'move', 'taşı',        
+    'clear', 'temizle',
   ]),
-  birthday: new Set(['setchannel']),
-  report: new Set(['setchannel']),
+  müzik: new Set([ 
+    'shuffle', 'karıştır',
+    'loop', 'döngü',
+    'seek', 'süre',
+    'remove', 'sil',
+    'move', 'taşı',
+    'clear', 'temizle',
+  ]),
+  birthday: new Set(['setchannel', 'kanalayarla']),
+  doğumgünü: new Set(['setchannel', 'kanalayarla']), 
+  report: new Set(['setchannel', 'kanalayarla']),
+  rapor: new Set(['setchannel', 'kanalayarla']),
 };
 
 function collectSubcommandNames(commandJson) {
@@ -80,11 +97,11 @@ export function getPrefixRestriction(command, args, resolveSubcommandAlias) {
   const commandName = commandJson.name?.toLowerCase();
 
   if (command.prefixOnly === false || command.slashOnly === true) {
-    return { blocked: true, reason: 'This command is only available as a slash command.' };
+    return { blocked: true, reason: 'Bu komut sadece eğik çizgi (/) komutu olarak kullanılabilir.' };
   }
 
   if (SLASH_ONLY_COMMANDS.has(commandName)) {
-    return { blocked: true, reason: 'This command is only available as a slash command.' };
+    return { blocked: true, reason: 'Bu komut sadece eğik çizgi (/) komutu olarak kullanılabilir.' };
   }
 
   const [firstArg, secondArg] = args.map((arg) => arg?.toLowerCase?.() || null);
@@ -99,27 +116,27 @@ export function getPrefixRestriction(command, args, resolveSubcommandAlias) {
     allSubcommandNames.every((name) => isSubcommandBlocked(commandName, name));
 
   if (allSubcommandsBlocked) {
-    return { blocked: true, reason: 'This command is only available as a slash command.' };
+    return { blocked: true, reason: 'Bu komut sadece eğik çizgi (/) komutu olarak kullanılabilir.' };
   }
 
   if (firstArg && GLOBAL_BLOCKED_SUBCOMMAND_GROUPS.has(firstArg)) {
     return {
       blocked: true,
-      reason: 'This configuration flow is only available as a slash command.',
+      reason: 'Bu yapılandırma akışı sadece eğik çizgi (/) komutu olarak kullanılabilir.',
     };
   }
 
   if (resolvedFirstArg && isSubcommandBlocked(commandName, resolvedFirstArg)) {
     return {
       blocked: true,
-      reason: 'This subcommand is only available as a slash command.',
+      reason: 'Bu alt komut sadece eğik çizgi (/) komutu olarak kullanılabilir.',
     };
   }
 
   if (subcommandGroup && resolvedSecondArg && isSubcommandBlocked(commandName, resolvedSecondArg)) {
     return {
       blocked: true,
-      reason: 'This subcommand is only available as a slash command.',
+      reason: 'Bu alt komut sadece eğik çizgi (/) komutu olarak kullanılabilir.',
     };
   }
 
