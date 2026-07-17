@@ -4,18 +4,18 @@ import { logger } from '../../utils/logger.js';
 import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getGuildGiveaways, deleteGiveaway } from '../../utils/giveaways.js';
 import { logEvent, EVENT_TYPES } from '../../services/loggingService.js';
-
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+
 export default {
     data: new SlashCommandBuilder()
-        .setName("gdelete")
+        .setName("gsil")
         .setDescription(
-            "Deletes a giveaway message and removes it from the database.",
+            "Bir çekiliş mesajını siler ve çekilişi veritabanından kaldırır.",
         )
         .addStringOption((option) =>
             option
-                .setName("messageid")
-                .setDescription("The message ID of the giveaway to delete.")
+                .setName("mesajid")
+                .setDescription("Silinecek çekilişin mesaj ID'si.")
                 .setRequired(true),
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
@@ -25,7 +25,7 @@ export default {
             throw new TitanBotError(
                 'Giveaway command used outside guild',
                 ErrorTypes.VALIDATION,
-                'This command can only be used in a server.',
+                'Bu komut sadece bir sunucu içerisinde kullanılabilir.',
                 { userId: interaction.user.id }
             );
         }
@@ -34,20 +34,20 @@ export default {
             throw new TitanBotError(
                 'User lacks ManageGuild permission',
                 ErrorTypes.PERMISSION,
-                "You need the 'Manage Server' permission to delete a giveaway.",
+                "Bir çekilişi silmek için 'Sunucuyu Yönet' yetkisine sahip olmalısınız.",
                 { userId: interaction.user.id, guildId: interaction.guildId }
             );
         }
 
-        logger.info(`Giveaway deletion started by ${interaction.user.tag} in guild ${interaction.guildId}`);
+        logger.info(`Çekiliş silme işlemi ${interaction.user.tag} tarafından ${interaction.guildId} sunucusunda başlatıldı.`);
 
-        const messageId = interaction.options.getString("messageid");
+        const messageId = interaction.options.getString("mesajid");
 
         if (!messageId || !/^\d+$/.test(messageId)) {
             throw new TitanBotError(
                 'Invalid message ID format',
                 ErrorTypes.VALIDATION,
-                'Please provide a valid message ID.',
+                'Lütfen geçerli bir mesaj ID\'si girin.',
                 { providedId: messageId }
             );
         }
@@ -59,13 +59,13 @@ export default {
             throw new TitanBotError(
                 `Giveaway not found: ${messageId}`,
                 ErrorTypes.VALIDATION,
-                "No giveaway was found with that message ID.",
+                "Bu mesaj ID'sine sahip bir çekiliş bulunamadı.",
                 { messageId, guildId: interaction.guildId }
             );
         }
 
         let deletedMessage = false;
-        let channelName = "Unknown Channel";
+        let channelName = "Bilinmeyen Kanal";
 
         const tryDeleteFromChannel = async (channel) => {
             if (!channel || !channel.isTextBased() || !channel.messages?.fetch) {
@@ -78,7 +78,7 @@ export default {
             }
 
             await message.delete();
-            channelName = channel.name || 'unknown-channel';
+            channelName = channel.name || 'bilinmeyen-kanal';
             deletedMessage = true;
             return true;
         };
@@ -86,7 +86,7 @@ export default {
         try {
             const channel = await interaction.client.channels.fetch(giveaway.channelId).catch(() => null);
             if (await tryDeleteFromChannel(channel)) {
-                logger.debug(`Deleted giveaway message ${messageId} from channel ${channelName}`);
+                logger.debug(`Çekiliş mesajı (${messageId}) #${channelName} kanalından başarıyla silindi.`);
             }
 
             if (!deletedMessage && interaction.guild) {
@@ -97,13 +97,13 @@ export default {
                 for (const [, guildChannel] of textChannels) {
                     const foundAndDeleted = await tryDeleteFromChannel(guildChannel).catch(() => false);
                     if (foundAndDeleted) {
-                        logger.debug(`Deleted giveaway message ${messageId} via fallback lookup in #${channelName}`);
+                        logger.debug(`Çekiliş mesajı (${messageId}) alternatif kanal taramasıyla #${channelName} kanalından silindi.`);
                         break;
                     }
                 }
             }
         } catch (error) {
-            logger.warn(`Could not delete giveaway message: ${error.message}`);
+            logger.warn(`Çekiliş mesajı silinemedi: ${error.message}`);
         }
 
         const removedFromDatabase = await deleteGiveaway(
@@ -116,7 +116,7 @@ export default {
             throw new TitanBotError(
                 `Failed to delete giveaway from database: ${messageId}`,
                 ErrorTypes.UNKNOWN,
-                'The giveaway could not be removed from the database. Please try again.',
+                'Çekiliş veritabanından silinemedi. Lütfen tekrar deneyin.',
                 { messageId, guildId: interaction.guildId }
             );
         }
@@ -128,26 +128,26 @@ export default {
             throw new TitanBotError(
                 `Giveaway still exists after deletion: ${messageId}`,
                 ErrorTypes.UNKNOWN,
-                'Deletion did not persist in the database. Please try again.',
+                'Çekiliş silme işlemi veritabanına kaydedilemedi. Lütfen tekrar deneyin.',
                 { messageId, guildId: interaction.guildId }
             );
         }
 
         const statusMsg = deletedMessage
-            ? `and the message was deleted from #${channelName}`
-            : `but the message was already deleted or the channel was inaccessible.`;
+            ? `ve çekiliş mesajı #${channelName} kanalından silindi.`
+            : `ancak çekiliş mesajı zaten silinmişti veya kanala erişilemedi.`;
 
         const winnerIds = Array.isArray(giveaway.winnerIds) ? giveaway.winnerIds : [];
         const hasWinners = winnerIds.length > 0;
         const wasEnded = giveaway.ended === true || giveaway.isEnded === true || hasWinners;
 
         const winnerStatusMsg = hasWinners
-            ? `This giveaway already had ${winnerIds.length} winner(s) selected.`
+            ? `Bu çekilişte zaten ${winnerIds.length} kazanan belirlenmişti.`
             : wasEnded
-                ? 'This giveaway was ended with no valid winners.'
-                : 'No winner was picked before deletion.';
+                ? 'Bu çekiliş zaten geçerli bir kazanan olmadan sona ermişti.'
+                : 'Silme işleminden önce henüz kazanan seçilmemişti.';
 
-        logger.info(`Giveaway deleted: ${messageId} in ${channelName}`);
+        logger.info(`Çekiliş silindi: ${messageId} (#${channelName} kanalında)`);
 
         try {
             await logEvent({
@@ -155,17 +155,17 @@ export default {
                 guildId: interaction.guildId,
                 eventType: EVENT_TYPES.GIVEAWAY_DELETE,
                 data: {
-                    description: `Giveaway deleted: ${giveaway.prize}`,
+                    description: `Çekiliş silindi: ${giveaway.prize}`,
                     channelId: giveaway.channelId,
                     userId: interaction.user.id,
                     fields: [
                         {
-                            name: 'Prize',
-                            value: giveaway.prize || 'Unknown',
+                            name: 'Ödül',
+                            value: giveaway.prize || 'Bilinmiyor',
                             inline: true
                         },
                         {
-                            name: 'Entries',
+                            name: 'Katılımcı Sayısı',
                             value: (giveaway.participants?.length || 0).toString(),
                             inline: true
                         }
@@ -173,14 +173,14 @@ export default {
                 }
             });
         } catch (logError) {
-            logger.debug('Error logging giveaway deletion:', logError);
+            logger.debug('Çekiliş silme olayı loglanırken hata oluştu:', logError);
         }
 
         return InteractionHelper.safeReply(interaction, {
             embeds: [
                 successEmbed(
-                    "Giveaway Deleted",
-                    `Successfully deleted the giveaway for **${giveaway.prize}** ${statusMsg}. ${winnerStatusMsg}`,
+                    "Çekiliş Silindi 🗑️",
+                    `**${giveaway.prize}** çekilişi veritabanından başarıyla kaldırıldı ${statusMsg} ${winnerStatusMsg}`,
                 ),
             ],
             flags: MessageFlags.Ephemeral,
