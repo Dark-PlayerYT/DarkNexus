@@ -1,140 +1,140 @@
 // xpSystem.js
 
 import { logger } from '../../utils/logger.js';
-import { getLevelingConfig, getXpForLevel, getUserLevelData, saveUserLevelData } from './leveling.js';
+import { seviyeAyarlariniGetir, seviyeIcinGerekenXp, kullaniciSeviyeVerisiGetir, kullaniciSeviyeVerisiniKaydet } from './leveling.js';
 import { logEvent, EVENT_TYPES } from '../loggingService.js';
 import { formatLogLine } from '../../utils/logging/logEmbeds.js';
 import { Mutex } from '../../utils/mutex.js';
 import { wrapServiceBoundary } from '../../utils/errorHandler.js';
 
 /**
- * Award XP to a member. Returns null when XP is skipped (disabled/invalid amount).
- * Throws on storage or unexpected failures.
+ * Bir üyeye XP verir. XP devre dışıysa veya miktar geçersizse null döner.
+ * Depolama veya beklenmedik hatalarda hata fırlatır.
  */
-export const addXp = wrapServiceBoundary(async function addXp(client, guild, member, xpToAdd) {
-  const lockKey = `leveling:${guild.id}:${member.user.id}`;
-  return await Mutex.runExclusive(lockKey, async () => {
-    if (!xpToAdd || xpToAdd <= 0) {
+export const xpEkle = wrapServiceBoundary(async function xpEkle(client, sunucu, uye, eklenecekXp) {
+  const kilitAnahtari = `leveling:${sunucu.id}:${uye.user.id}`;
+  return await Mutex.runExclusive(kilitAnahtari, async () => {
+    if (!eklenecekXp || eklenecekXp <= 0) {
       return null;
     }
 
-    const config = await getLevelingConfig(client, guild.id);
+    const ayarlar = await seviyeAyarlariniGetir(client, sunucu.id);
 
-    if (!config.enabled) {
+    if (!ayarlar.enabled) {
       return null;
     }
 
-    const levelData = await getUserLevelData(client, guild.id, member.user.id);
+    const seviyeVerisi = await kullaniciSeviyeVerisiGetir(client, sunucu.id, uye.user.id);
 
-    levelData.xp += xpToAdd;
-    levelData.totalXp += xpToAdd;
-    levelData.lastMessage = Date.now();
+    seviyeVerisi.xp += eklenecekXp;
+    seviyeVerisi.totalXp += eklenecekXp;
+    seviyeVerisi.lastMessage = Date.now();
 
-    let xpNeededForNextLevel = getXpForLevel(levelData.level);
-    let didLevelUp = false;
-    const initialLevel = levelData.level;
+    let sonrakiSeviyeIcinGerekenXp = seviyeIcinGerekenXp(seviyeVerisi.level);
+    let seviyeAtladimi = false;
+    const baslangicSeviyesi = seviyeVerisi.level;
 
-    while (levelData.xp >= xpNeededForNextLevel && levelData.level < 1000) {
-      levelData.xp -= xpNeededForNextLevel;
-      levelData.level += 1;
-      didLevelUp = true;
-      xpNeededForNextLevel = getXpForLevel(levelData.level);
+    while (seviyeVerisi.xp >= sonrakiSeviyeIcinGerekenXp && seviyeVerisi.level < 1000) {
+      seviyeVerisi.xp -= sonrakiSeviyeIcinGerekenXp;
+      seviyeVerisi.level += 1;
+      seviyeAtladimi = true;
+      sonrakiSeviyeIcinGerekenXp = seviyeIcinGerekenXp(seviyeVerisi.level);
 
-      logger.info(`🎉 ${member.user.tag} leveled up to level ${levelData.level} in ${guild.name}`);
+      logger.info(`🎉 ${uye.user.tag} sunucuda ${seviyeVerisi.level}. seviyeye ulaştı: ${sunucu.name}`);
 
-      if (config.roleRewards && config.roleRewards[levelData.level]) {
-        await awardRoleReward(guild, member, config.roleRewards[levelData.level], levelData.level);
+      if (ayarlar.roleRewards && ayarlar.roleRewards[seviyeVerisi.level]) {
+        await rolOduluVer(sunucu, uye, ayarlar.roleRewards[seviyeVerisi.level], seviyeVerisi.level);
       }
     }
 
-    if (didLevelUp) {
-      if (config.announceLevelUp) {
-        await sendLevelUpAnnouncement(guild, member, levelData, config);
+    if (seviyeAtladimi) {
+      if (ayarlar.announceLevelUp) {
+        await seviyeAtlamaDuyurusuGonder(sunucu, uye, seviyeVerisi, ayarlar);
       }
 
       try {
         await logEvent({
           client,
-          guildId: guild.id,
+          guildId: sunucu.id,
           eventType: EVENT_TYPES.LEVELING_LEVELUP,
           data: {
-            title: 'Level Up',
+            title: 'Seviye Atlandı',
             lines: [
-              formatLogLine('Member', `${member.user.tag} (\`${member.user.id}\`)`),
-              formatLogLine('New Level', levelData.level.toString()),
-              formatLogLine('Levels Gained', (levelData.level - initialLevel).toString()),
-              formatLogLine('Total XP', levelData.totalXp.toString()),
+              formatLogLine('Üye', `${uye.user.tag} (\`${uye.user.id}\`)`),
+              formatLogLine('Yeni Seviye', seviyeVerisi.level.toString()),
+              formatLogLine('Kazanılan Seviye', (seviyeVerisi.level - baslangicSeviyesi).toString()),
+              formatLogLine('Toplam XP', seviyeVerisi.totalXp.toString()),
             ],
-            userId: member.user.id,
+            userId: uye.user.id,
           },
         });
-      } catch (logError) {
-        logger.debug('Failed to log leveling event:', logError.message);
+      } catch (logHatasi) {
+        logger.debug('Seviye atlama olayı loglanamadı:', logHatasi.message);
       }
     }
 
-    await saveUserLevelData(client, guild.id, member.user.id, levelData);
+    await kullaniciSeviyeVerisiniKaydet(client, sunucu.id, uye.user.id, seviyeVerisi);
 
     return {
-      level: levelData.level,
-      xp: levelData.xp,
-      totalXp: levelData.totalXp,
-      xpNeeded: getXpForLevel(levelData.level + 1),
-      leveledUp: didLevelUp,
+      level: seviyeVerisi.level,
+      xp: seviyeVerisi.xp,
+      totalXp: seviyeVerisi.totalXp,
+      xpNeeded: seviyeIcinGerekenXp(seviyeVerisi.level + 1),
+      leveledUp: seviyeAtladimi,
     };
   });
 }, {
-  service: 'xpSystem',
-  operation: 'addXp',
-  userMessage: 'Failed to award XP. Please try again.',
+  service: 'xpSistemi',
+  operation: 'xpEkle',
+  userMessage: 'XP verilemedi. Lütfen tekrar dene.',
 });
 
-async function awardRoleReward(guild, member, roleId, level) {
+async function rolOduluVer(sunucu, uye, rolId, seviye) {
   try {
-    const role = guild.roles.cache.get(roleId);
+    const rol = sunucu.roles.cache.get(rolId);
 
-    if (!role) {
-      logger.warn(`Role ${roleId} not found for level ${level} reward in guild ${guild.id}`);
+    if (!rol) {
+      logger.warn(`Sunucu ${sunucu.id} içinde ${seviye}. seviye ödülü olan ${rolId} rolü bulunamadı.`);
       return;
     }
 
-    if (member.roles.cache.has(roleId)) {
+    if (uye.roles.cache.has(rolId)) {
       return;
     }
 
-    await member.roles.add(role, `Level ${level} reward`);
-    logger.info(`✅ Awarded role ${role.name} to ${member.user.tag} for reaching level ${level}`);
-  } catch (error) {
-    logger.error(`Failed to award role reward to ${member.user.id}:`, error);
+    await uye.roles.add(rol, `Seviye ${seviye} ödülü`);
+    logger.info(`✅ ${uye.user.tag} kullanıcısına ${seviye}. seviye için ${rol.name} rolü verildi.`);
+  } catch (hata) {
+    logger.error(`Kullanıcıya ${uye.user.id} rol ödülü verilemedi:`, hata);
   }
 }
 
-async function sendLevelUpAnnouncement(guild, member, levelData, config) {
+async function seviyeAtlamaDuyurusuGonder(sunucu, uye, seviyeVerisi, ayarlar) {
   try {
-    const levelUpChannel = config.levelUpChannel
-      ? guild.channels.cache.get(config.levelUpChannel)
-      : guild.systemChannel;
+    const duyuruKanali = ayarlar.levelUpChannel
+      ? sunucu.channels.cache.get(ayarlar.levelUpChannel)
+      : sunucu.systemChannel;
 
-    if (!levelUpChannel || !levelUpChannel.isTextBased()) {
+    if (!duyuruKanali || !duyuruKanali.isTextBased()) {
       return;
     }
 
-    const permissions = levelUpChannel.permissionsFor(guild.members.me);
-    if (!permissions || !permissions.has(['SendMessages', 'EmbedLinks'])) {
-      logger.warn(`Missing permissions to send levelup message in ${levelUpChannel.id}`);
+    const izinler = duyuruKanali.permissionsFor(sunucu.members.me);
+    if (!izinler || !izinler.has(['SendMessages', 'EmbedLinks'])) {
+      logger.warn(`Duyuru kanalında (${duyuruKanali.id}) mesaj gönderme yetkisi eksik.`);
       return;
     }
 
-    const message = config.levelUpMessage
-      .replace(/{user}/g, member.toString())
-      .replace(/{level}/g, levelData.level)
-      .replace(/{xp}/g, levelData.xp)
-      .replace(/{xpNeeded}/g, getXpForLevel(levelData.level + 1));
+    const mesaj = ayarlar.levelUpMessage
+      .replace(/{user}/g, uye.toString())
+      .replace(/{level}/g, seviyeVerisi.level)
+      .replace(/{xp}/g, seviyeVerisi.xp)
+      .replace(/{xpNeeded}/g, seviyeIcinGerekenXp(seviyeVerisi.level + 1));
 
-    await levelUpChannel.send(message).catch(error => {
-      logger.error(`Failed to send level up message in channel ${levelUpChannel.id}:`, error);
+    await duyuruKanali.send(mesaj).catch(hata => {
+      logger.error(`Kanalda (${duyuruKanali.id}) seviye atlama mesajı gönderilemedi:`, hata);
     });
-  } catch (error) {
-    logger.error('Error sending level up announcement:', error);
+  } catch (hata) {
+    logger.error('Seviye atlama duyurusu gönderilirken hata oluştu:', hata);
   }
 }
