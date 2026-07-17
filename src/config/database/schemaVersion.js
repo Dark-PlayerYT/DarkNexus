@@ -4,4 +4,5 @@ export const EXPECTED_SCHEMA_VERSION = Number.isInteger(rawSchemaVersion) && raw
     ? rawSchemaVersion
     : 1;
 
-export const EXPECTED_SCHEMA_LABEL = process.env.SCHEMA_VERSION_LABEL || `baseline-v${EXPECTED_SCHEMA_VERSION}`;
+// Varsayılan etiket formatını darknexus standartlarına uyacak şekilde güncelledik
+export const EXPECTED_SCHEMA_LABEL = process.env.SCHEMA_VERSION_LABEL || `darknexus-v${EXPECTED_SCHEMA_VERSION}`;
