@@ -72,7 +72,7 @@ export function getLavalinkNodes() {
         port,
         password,
         secure,
-        name: process.env.LAVALINK_NAME || 'Main',
+        name: process.env.LAVALINK_NAME || 'DarkNexus-Lavalink', // Varsayılan düğüm adı Dark Nexus olarak güncellendi
     }];
 }
 
