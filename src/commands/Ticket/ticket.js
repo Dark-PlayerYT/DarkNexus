@@ -1,6 +1,6 @@
 import { getColor } from '../../config/bot.js';
-import { SlashCommandBuilder, PermissionFlagsBits, PermissionsBitField, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
-import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
+import { createEmbed, successEmbed } from '../../utils/embeds.js';
 import { getGuildConfig, setGuildConfig } from '../../services/config/guildConfig.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { logger } from '../../utils/logger.js';
@@ -11,70 +11,56 @@ import ticketConfig from './modules/ticket_dashboard.js';
 export default {
     data: new SlashCommandBuilder()
         .setName("ticket")
-        .setDescription("Manages the server's ticket system.")
+        .setDescription("Sunucunun bilet (destek) sistemini yönetir.")
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+        .setDMPermission(false) // DM üzerinden bilet yönetilemez
         .addSubcommand((subcommand) =>
             subcommand
                 .setName("setup")
-                .setDescription(
-                    "Sets up the ticket creation panel in a specified channel.",
-                )
+                .setDescription("Belirtilen kanalda bilet oluşturma panelini kurar.")
                 .addChannelOption((option) =>
                     option
-.setName("panel_channel")
-                        .setDescription(
-                            "The channel where the ticket panel will be sent.",
-                        )
+                        .setName("panel_channel")
+                        .setDescription("Bilet panelinin gönderileceği metin kanalı.")
                         .addChannelTypes(ChannelType.GuildText)
                         .setRequired(true),
                 )
-
                 .addStringOption((option) =>
                     option
                         .setName("panel_message")
-                        .setDescription(
-                            "The main message/description for the ticket panel.",
-                        )
+                        .setDescription("Bilet panelinde görünecek ana açıklama mesajı.")
                         .setRequired(true),
                 )
                 .addStringOption((option) =>
                     option
                         .setName("button_label")
-                        .setDescription(
-                            "The label for the ticket creation button (default: Create Ticket)",
-                        )
+                        .setDescription("Bilet oluşturma butonunun yazısı (Varsayılan: Destek Talebi Oluştur)")
                         .setRequired(false),
                 )
                 .addChannelOption((option) =>
                     option
                         .setName("category")
-                        .setDescription(
-                            "The category where new tickets will be created (optional).",
-                        )
+                        .setDescription("Yeni bilet kanallarının açılacağı kategori (İsteğe bağlı).")
                         .addChannelTypes(ChannelType.GuildCategory)
                         .setRequired(false),
                 )
                 .addChannelOption((option) =>
                     option
                         .setName("closed_category")
-                        .setDescription(
-                            "The category where closed tickets will be moved (optional).",
-                        )
+                        .setDescription("Kapatılan biletlerin taşınacağı kategori (İsteğe bağlı).")
                         .addChannelTypes(ChannelType.GuildCategory)
                         .setRequired(false),
                 )
                 .addRoleOption((option) =>
                     option
                         .setName("staff_role")
-                        .setDescription(
-                            "The role that can access tickets (optional).",
-                        )
+                        .setDescription("Biletlere erişebilecek yetkili rolü (İsteğe bağlı).")
                         .setRequired(false),
                 )
                 .addIntegerOption((option) =>
                     option
                         .setName("max_tickets_per_user")
-                        .setDescription("Maximum number of tickets a user can create (default: 3)")
+                        .setDescription("Bir kullanıcının açabileceği maksimum bilet sayısı (Varsayılan: 3)")
                         .setMinValue(1)
                         .setMaxValue(10)
                         .setRequired(false),
@@ -82,16 +68,16 @@ export default {
                 .addBooleanOption((option) =>
                     option
                         .setName("dm_on_close")
-                        .setDescription("Send DM to user when their ticket is closed (default: true)")
+                        .setDescription("Bilet kapatıldığında kullanıcıya DM gönderilsin mi? (Varsayılan: Evet)")
                         .setRequired(false),
                 ),
         )
         .addSubcommand((subcommand) =>
             subcommand
                 .setName("dashboard")
-                .setDescription("Open the interactive ticket system dashboard"),
+                .setDescription("Etkileşimli bilet sistemi yönetim panelini açar"),
         ),
-    category: "ticket",
+    category: "Bilet",
 
     async execute(interaction, config, client) {
         const deferred = await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
@@ -99,65 +85,72 @@ export default {
             return;
         }
 
-        if (
-            !interaction.member.permissions.has(
-                PermissionFlagsBits.ManageChannels,
-            )
-        ) {
+        // Güvenlik Kontrolü: Kanalları Yönet yetkisi var mı?
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
             logger.warn('Ticket command permission denied', {
                 userId: interaction.user.id,
                 guildId: interaction.guildId,
                 commandName: 'ticket'
             });
-            return await replyUserError(interaction, { type: ErrorTypes.PERMISSION, message: 'You need the `Manage Channels` permission for this action.' });
+            return await replyUserError(interaction, { 
+                type: ErrorTypes.PERMISSION, 
+                message: 'Bu işlemi gerçekleştirebilmek için **Kanalları Yönet** yetkisine sahip olmalısınız.' 
+            });
         }
 
         const subcommand = interaction.options.getSubcommand();
 
+        // Dashboard alt komutu çalıştırılıyor
         if (subcommand === "dashboard") {
             return ticketConfig.execute(interaction, config, client);
         }
 
+        // Setup alt komutu çalıştırılıyor
         if (subcommand === "setup") {
             const existingConfig = await getGuildConfig(client, interaction.guildId);
             if (existingConfig?.ticketPanelChannelId) {
-                return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: `This server already has a ticket system set up (panel in <#${existingConfig.ticketPanelChannelId}>).\n\nOnly one ticket system is supported per server. Use \`/ticket dashboard\` to edit or update the existing setup, or select **Delete System** from the dashboard to remove it and start fresh.` });
+                return await replyUserError(interaction, { 
+                    type: ErrorTypes.UNKNOWN, 
+                    message: `Bu sunucuda zaten aktif bir bilet sistemi kurulu (Panel kanalı: <#${existingConfig.ticketPanelChannelId}>).\n\n` +
+                             `Sunucu başına yalnızca bir bilet sistemi desteklenir. Kurulumu güncellemek için \`/ticket dashboard\` komutunu kullanabilir veya oradaki **Sistemi Sil** seçeneğiyle sıfırdan başlayabilirsiniz.` 
+                });
             }
 
-            const panelChannel =
-                interaction.options.getChannel("panel_channel");
+            const panelChannel = interaction.options.getChannel("panel_channel");
             const categoryChannel = interaction.options.getChannel("category");
             const closedCategoryChannel = interaction.options.getChannel("closed_category");
             const staffRole = interaction.options.getRole("staff_role");
-const panelMessage = interaction.options.getString("panel_message") || "Click the button below to create a support ticket.";
-            const buttonLabel =
-                interaction.options.getString("button_label") ||
-"Create Ticket";
+            const panelMessage = interaction.options.getString("panel_message") || "Destek talebi oluşturmak için aşağıdaki butona tıklayın.";
+            const buttonLabel = interaction.options.getString("button_label") || "Destek Talebi Oluştur";
             const maxTicketsPerUser = interaction.options.getInteger("max_tickets_per_user") || 3;
-const dmOnClose = interaction.options.getBoolean("dm_on_close") !== false;
+            const dmOnClose = interaction.options.getBoolean("dm_on_close") !== false;
 
+            // Bilet Paneli Embed tasarımı
             const setupEmbed = createEmbed({ 
-                title: "Support Tickets", 
-description: panelMessage,
+                title: "📩 Destek Sistemi", 
+                description: panelMessage,
                 color: getColor('info')
             });
 
+            // Etkileşimli butonun oluşturulması
             const ticketButton = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId("create_ticket")
-.setLabel(buttonLabel)
+                    .setLabel(buttonLabel)
                     .setStyle(ButtonStyle.Primary)
                     .setEmoji("📩"),
             );
 
             try {
+                // Paneli hedef kanala gönderiyoruz
                 const sentPanel = await panelChannel.send({
                     embeds: [setupEmbed],
                     components: [ticketButton],
                 });
 
+                // Veritabanı bağlantısı varsa yapılandırmayı kaydediyoruz
                 if (client.db && interaction.guildId) {
-                    const currentConfig = existingConfig;
+                    const currentConfig = existingConfig || {};
                     currentConfig.ticketCategoryId = categoryChannel ? categoryChannel.id : null;
                     currentConfig.ticketClosedCategoryId = closedCategoryChannel ? closedCategoryChannel.id : null;
                     currentConfig.ticketStaffRoleId = staffRole ? staffRole.id : null;
@@ -183,28 +176,30 @@ description: panelMessage,
                     });
                 }
 
-                let successMessage = `The ticket creation panel has been sent to ${panelChannel}.`;
+                // Başarılı kurulum geri bildirim mesajı
+                let successMessage = `Bilet oluşturma paneli başarıyla ${panelChannel} kanalına gönderildi.\n\n`;
                 
                 if (categoryChannel) {
-                    successMessage += `New tickets will be created in the **${categoryChannel.name}** category.`;
+                    successMessage += `🔹 **Açılacak Kategori:** \`${categoryChannel.name}\`\n`;
                 } else {
-                    successMessage += 'New tickets will be created in a new "Tickets" category.';
+                    successMessage += '🔹 **Açılacak Kategori:** Varsayılan (Yeni bir "Biletler" kategorisi açılacak)\n';
                 }
                 
                 if (closedCategoryChannel) {
-                    successMessage += `Closed tickets will be moved to **${closedCategoryChannel.name}**.`;
+                    successMessage += `🔹 **Kapatılanların Taşınacağı Kategori:** \`${closedCategoryChannel.name}\`\n`;
                 }
                 
                 if (staffRole) {
-                    successMessage += `**${staffRole.name}** role will have access to tickets.`;
+                    successMessage += `🔹 **Yetkili Rolü:** ${staffRole}\n`;
                 }
                 
-                successMessage += `\n\n**Max Tickets Per User:** ${maxTicketsPerUser}\n**DM on Close:** ${dmOnClose ? 'Enabled' : 'Disabled'}`;
+                successMessage += `🔹 **Kullanıcı Başına Sınır:** \`${maxTicketsPerUser}\` adet\n`;
+                successMessage += `🔹 **Kapanışta DM Bildirimi:** \`${dmOnClose ? 'Açık' : 'Kapalı'}\``;
 
                 await InteractionHelper.safeEditReply(interaction, {
                     embeds: [
                         successEmbed(
-                            "Ticket Panel Set Up",
+                            "Bilet Sistemi Kuruldu 🎉",
                             successMessage,
                         ),
                     ],
@@ -223,55 +218,6 @@ description: panelMessage,
                     commandName: 'ticket_setup'
                 });
 
-                const logEmbed = createEmbed({
-                    title: "Ticket System Setup (Configuration Log)",
-                    description: `The ticket panel was set up in ${panelChannel} by ${interaction.user}.`,
-                    color: getColor('warning')
-                })
-                    .addFields(
-                        {
-                            name: "Panel Channel",
-                            value: panelChannel.toString(),
-                            inline: true,
-                        },
-                        {
-                            name: "Ticket Category",
-                            value: categoryChannel
-                                ? categoryChannel.toString()
-                                : "None specified.",
-                            inline: true,
-                        },
-                        {
-                            name: "Closed Category",
-                            value: closedCategoryChannel
-                                ? closedCategoryChannel.toString()
-                                : "None specified.",
-                            inline: true,
-                        },
-                        {
-                            name: "Staff Role",
-                            value: staffRole
-                                ? staffRole.toString()
-                                : "None specified.",
-                            inline: true,
-                        },
-                        {
-                            name: "Max Tickets Per User",
-                            value: maxTicketsPerUser.toString(),
-                            inline: true,
-                        },
-                        {
-                            name: "DM on Close",
-                            value: dmOnClose ? 'Enabled' : 'Disabled',
-                            inline: true,
-                        },
-                        {
-                            name: "Moderator",
-                            value: `${interaction.user.tag} (${interaction.user.id})`,
-                            inline: false,
-                        },
-                    );
-
             } catch (error) {
                 logger.error('Ticket setup error', {
                     error: error.message,
@@ -280,8 +226,12 @@ description: panelMessage,
                     guildId: interaction.guildId,
                     commandName: 'ticket_setup'
                 });
+
                 if (interaction.deferred || interaction.replied) {
-                    await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Could not send the ticket panel or save configuration. Check the bot\'s permissions (especially the ability to send messages in the target channel) and database connection.' }).catch(err => {
+                    await replyUserError(interaction, { 
+                        type: ErrorTypes.UNKNOWN, 
+                        message: 'Bilet paneli gönderilirken veya yapılandırma kaydedilirken bir hata oluştu. Botun hedef kanalda mesaj gönderme yetkisinin olduğundan ve veritabanı bağlantısının aktif olduğundan emin olun.' 
+                    }).catch(err => {
                         logger.error('Failed to send error reply', {
                             error: err.message,
                             guildId: interaction.guildId
