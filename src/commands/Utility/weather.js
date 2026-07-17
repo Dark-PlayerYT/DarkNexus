@@ -3,17 +3,18 @@ import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/
 import { logger } from '../../utils/logger.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
 
 export default {
     data: new SlashCommandBuilder()
         .setName("weather")
-        .setDescription("Get real-time weather information for a location")
+        .setDescription("Belirtilen konum için anlık hava durumu bilgilerini getirir")
         .addStringOption((option) =>
             option
                 .setName("city")
-                .setDescription("The city name, e.g., 'London' or 'Tokyo'")
+                .setDescription("Şehir adı, örn: 'Niğde' veya 'Tokyo'")
                 .setRequired(true),
         ),
 
@@ -41,7 +42,10 @@ export default {
                 city: city,
                 guildId: interaction.guildId
             });
-            await replyUserError(interaction, { type: ErrorTypes.USER_INPUT, message: `Could not find a location for **${city}**. Please check the spelling.` });
+            await replyUserError(interaction, { 
+                type: ErrorTypes.USER_INPUT, 
+                message: `**${city}** için bir konum bulunamadı. Lütfen yazımı kontrol edip tekrar deneyin.` 
+            });
             return;
         }
 
@@ -60,7 +64,10 @@ export default {
                 userId: interaction.user.id,
                 guildId: interaction.guildId
             });
-            await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'A weather service error occurred.' });
+            await replyUserError(interaction, { 
+                type: ErrorTypes.UNKNOWN, 
+                message: 'Hava durumu servisinde bir hata oluştu.' 
+            });
             return;
         }
 
@@ -72,26 +79,29 @@ export default {
 
         const condition = getWeatherDescription(weatherCode);
 
-        const embed = createEmbed({ title: `Weather in ${cityDisplay}, ${country}`, description: condition.description })
+        const embed = createEmbed({ 
+            title: `Hava Durumu: ${cityDisplay}, ${country}`, 
+            description: `${condition.emoji} **Hava Durumu:** ${condition.description}` 
+        })
             .addFields(
                 {
-                    name: "Temperature",
+                    name: "🌡️ Sıcaklık",
                     value: `${temperature}°C`,
                     inline: true,
                 },
                 {
-                    name: "Humidity",
+                    name: "💧 Nem",
                     value: `${humidity}%`,
                     inline: true,
                 },
                 {
-                    name: "Wind Speed",
-                    value: `${windSpeed} km/h`,
+                    name: "💨 Rüzgar Hızı",
+                    value: `${windSpeed} km/s`,
                     inline: true,
                 },
             )
             .setFooter({
-                text: `Latitude: ${latitude.toFixed(2)} | Longitude: ${longitude.toFixed(2)}`,
+                text: `Enlem: ${latitude.toFixed(2)} | Boylam: ${longitude.toFixed(2)}`,
             });
 
         await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
@@ -105,19 +115,28 @@ export default {
     },
 };
 
+// Open-Meteo hava durum kodlarını Türkçe açıklamalara ve emojilere eşleştiriyoruz
 function getWeatherDescription(code) {
-    if (code >= 0 && code <= 3) {
-        return { description: "Clear sky / Partly cloudy", emoji: "" };
+    if (code === 0) {
+        return { description: "Açık Gökyüzü", emoji: "☀️" };
+    } else if (code >= 1 && code <= 3) {
+        return { description: "Az Bulutlu / Parçalı Bulutlu", emoji: "⛅" };
     } else if (code >= 45 && code <= 48) {
-        return { description: "Fog and Rime fog", emoji: "" };
-    } else if (code >= 51 && code <= 67) {
-        return { description: "Drizzle or Rain", emoji: "" };
+        return { description: "Sisli ve Kırağı Sisli", emoji: "🌫️" };
+    } else if (code >= 51 && code <= 55) {
+        return { description: "Hafif Çiseleyen Yağmurlu", emoji: "🌦️" };
+    } else if (code >= 56 && code <= 67) {
+        return { description: "Yağmurlu / Sağanak Yağışlı", emoji: "🌧️" };
     } else if (code >= 71 && code <= 75) {
-        return { description: "Snow fall", emoji: "" };
-    } else if (code >= 80 && code <= 86) {
-        return { description: "Showers (Rain/Snow)", emoji: "" };
+        return { description: "Kar Yağışlı", emoji: "❄️" };
+    } else if (code >= 77) {
+        return { description: "Kar Tanecliği Yağışlı", emoji: "🌨️" };
+    } else if (code >= 80 && code <= 82) {
+        return { description: "Sağanak Yağmurlu", emoji: "🌧️" };
+    } else if (code >= 85 && code <= 86) {
+        return { description: "Sağanak Kar Yağışlı", emoji: "🌨️" };
     } else if (code >= 95 && code <= 99) {
-        return { description: "Thunderstorm", emoji: "" };
+        return { description: "Gök Gürültülü Sağanak Yağışlı", emoji: "⛈️" };
     }
-    return { description: "Unknown conditions.", emoji: "" };
+    return { description: "Bilinmeyen Hava Koşulları.", emoji: "❓" };
 }
