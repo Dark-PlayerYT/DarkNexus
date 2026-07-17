@@ -2,47 +2,49 @@ import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
 import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getUserLevelData, getLevelingConfig, getXpForLevel } from '../../services/leveling/leveling.js';
-
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+
 export default {
   data: new SlashCommandBuilder()
-    .setName('rank')
-    .setDescription("Check your or another user's rank and level")
+    .setName('seviye') // Komut ismi Türkçe yapıldı
+    .setDescription('Kendi seviyenizi veya başka bir kullanıcının seviyesini kontrol edersiniz')
     .addUserOption((option) =>
       option
-        .setName('user')
-        .setDescription('The user to check the rank of')
+        .setName('kullanıcı')
+        .setDescription('Seviyesine bakılacak kullanıcı')
         .setRequired(false)
     )
     .setDMPermission(false),
-  category: 'Leveling',
+  category: 'Seviye',
 
   async execute(interaction, config, client) {
-    await InteractionHelper.safeDefer(interaction);
-
+    // 1. Önce seviye sisteminin aktif olup olmadığını kontrol ediyoruz (Gizli mesajın çalışması için)
     const levelingConfig = await getLevelingConfig(client, interaction.guildId);
     if (!levelingConfig?.enabled) {
-      await InteractionHelper.safeEditReply(interaction, {
+      await interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setColor('#f1c40f')
-            .setDescription('The leveling system is currently disabled on this server.')
+            .setDescription('Seviye sistemi şu anda bu sunucuda devre dışı bırakılmış.')
         ],
         flags: MessageFlags.Ephemeral
       });
       return;
     }
 
-    const targetUser = interaction.options.getUser('user') || interaction.user;
+    // 2. Sistem aktifse güvenli şekilde defer başlatıyoruz
+    await InteractionHelper.safeDefer(interaction);
+
+    const targetUser = interaction.options.getUser('kullanıcı') || interaction.user;
     const member = await interaction.guild.members
       .fetch(targetUser.id)
       .catch(() => null);
 
     if (!member) {
       throw new TitanBotError(
-        `User ${targetUser.id} not found in guild`,
+        `Kullanıcı ${targetUser.id} sunucuda bulunamadı`,
         ErrorTypes.USER_INPUT,
-        'Could not find the specified user in this server.'
+        'Belirtilen kullanıcı bu sunucuda bulunmuyor.'
       );
     }
 
@@ -59,34 +61,34 @@ export default {
     const progressBar = createProgressBar(progress, 20);
 
     const embed = new EmbedBuilder()
-      .setTitle(`${member.displayName}'s Rank`)
+      .setTitle(`${member.displayName} Kullanıcısının Profili`)
       .setThumbnail(member.displayAvatarURL({ dynamic: true }))
       .addFields(
         {
-          name: 'Level',
+          name: 'Seviye',
           value: safeUserData.level.toString(),
           inline: true
         },
         {
-          name: 'XP',
+          name: 'Mevcut XP',
           value: `${safeUserData.xp}/${xpNeeded}`,
           inline: true
         },
         {
-          name: 'Total XP',
+          name: 'Toplam XP',
           value: safeUserData.totalXp.toString(),
           inline: true
         },
         {
-          name: `Progress to Level ${safeUserData.level + 1}`,
-          value: `${progressBar} ${progress}%`
+          name: `Seviye ${safeUserData.level + 1} için İlerleme`,
+          value: `${progressBar} %${progress}`
         }
       )
       .setColor('#2ecc71')
       .setTimestamp();
 
     await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
-    logger.debug(`Rank checked for user ${targetUser.id} in guild ${interaction.guildId}`);
+    logger.debug(`[SEVİYE] ${interaction.user.tag}, ${interaction.guildId} sunucusunda ${targetUser.tag} kullanıcısının seviyesini sorguladı.`);
   }
 };
 
