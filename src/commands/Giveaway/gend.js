@@ -13,14 +13,14 @@ import { InteractionHelper } from '../../utils/interactionHelper.js';
 
 export default {
     data: new SlashCommandBuilder()
-        .setName("gend")
+        .setName("gbitir")
         .setDescription(
-            "Ends an active giveaway immediately and picks the winner(s).",
+            "Aktif bir çekilişi hemen sonlandırır ve kazananı/kazananları belirler.",
         )
         .addStringOption((option) =>
             option
-                .setName("messageid")
-                .setDescription("The message ID of the giveaway to end.")
+                .setName("mesajid")
+                .setDescription("Sonlandırılacak çekilişin mesaj ID'si.")
                 .setRequired(true),
         )
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
@@ -30,7 +30,7 @@ export default {
             throw new TitanBotError(
                 'Giveaway command used outside guild',
                 ErrorTypes.VALIDATION,
-                'This command can only be used in a server.',
+                'Bu komut sadece bir sunucu içerisinde kullanılabilir.',
                 { userId: interaction.user.id }
             );
         }
@@ -39,20 +39,20 @@ export default {
             throw new TitanBotError(
                 'User lacks ManageGuild permission',
                 ErrorTypes.PERMISSION,
-                "You need the 'Manage Server' permission to end a giveaway.",
+                "Bir çekilişi sonlandırmak için 'Sunucuyu Yönet' yetkisine sahip olmalısınız.",
                 { userId: interaction.user.id, guildId: interaction.guildId }
             );
         }
 
-        logger.info(`Giveaway end initiated by ${interaction.user.tag} in guild ${interaction.guildId}`);
+        logger.info(`Çekilişi bitirme işlemi ${interaction.user.tag} tarafından ${interaction.guildId} sunucusunda başlatıldı.`);
 
-        const messageId = interaction.options.getString("messageid");
+        const messageId = interaction.options.getString("mesajid");
 
         if (!messageId || !/^\d+$/.test(messageId)) {
             throw new TitanBotError(
                 'Invalid message ID format',
                 ErrorTypes.VALIDATION,
-                'Please provide a valid message ID.',
+                'Lütfen geçerli bir mesaj ID\'si girin.',
                 { providedId: messageId }
             );
         }
@@ -64,7 +64,7 @@ export default {
             throw new TitanBotError(
                 `Giveaway not found: ${messageId}`,
                 ErrorTypes.VALIDATION,
-                "No giveaway was found with that message ID in the database.",
+                "Veritabanında bu mesaj ID'sine sahip aktif bir çekiliş bulunamadı.",
                 { messageId, guildId: interaction.guildId }
             );
         }
@@ -82,7 +82,7 @@ export default {
         const channel = await interaction.client.channels.fetch(
             updatedGiveaway.channelId,
         ).catch(err => {
-            logger.warn(`Could not fetch channel ${updatedGiveaway.channelId}:`, err.message);
+            logger.warn(`Kanal bulunamadı ${updatedGiveaway.channelId}:`, err.message);
             return null;
         });
 
@@ -90,7 +90,7 @@ export default {
             throw new TitanBotError(
                 `Channel not found: ${updatedGiveaway.channelId}`,
                 ErrorTypes.VALIDATION,
-                "Could not find the channel where the giveaway was hosted. The giveaway state has been updated.",
+                "Çekilişin düzenlendiği kanal bulunamadı. Ancak çekiliş durumu veritabanında güncellendi.",
                 { channelId: updatedGiveaway.channelId, messageId }
             );
         }
@@ -98,7 +98,7 @@ export default {
         const message = await channel.messages
             .fetch(messageId)
             .catch(err => {
-                logger.warn(`Could not fetch message ${messageId}:`, err.message);
+                logger.warn(`Mesaj bulunamadı ${messageId}:`, err.message);
                 return null;
             });
 
@@ -106,7 +106,7 @@ export default {
             throw new TitanBotError(
                 `Message not found: ${messageId}`,
                 ErrorTypes.VALIDATION,
-                "Could not find the giveaway message. The giveaway state has been updated.",
+                "Çekiliş mesajı bulunamadı. Ancak çekiliş durumu veritabanında güncellendi.",
                 { messageId, channelId: updatedGiveaway.channelId }
             );
         }
@@ -121,7 +121,7 @@ export default {
         const newRow = createGiveawayButtons(true);
 
         await message.edit({
-            content: "🎉 **GIVEAWAY ENDED** 🎉",
+            content: "🎉 **ÇEKİLİŞ SONA ERDİ** 🎉",
             embeds: [newEmbed],
             components: [newRow],
         });
@@ -129,14 +129,14 @@ export default {
         if (winners.length > 0) {
             const winnerMentions = winners
                 .map((id) => `<@${id}>`)
-                .join(",");
+                .join(", ");
             const winnerPingMsg = await channel.send({
-                content: `🎉 CONGRATULATIONS ${winnerMentions}! You won the **${updatedGiveaway.prize}** giveaway! Please contact the host <@${updatedGiveaway.hostId}> to claim your prize.`,
+                content: `🎉 TEBRİKLER ${winnerMentions}! **${updatedGiveaway.prize}** çekilişini kazandınız! Ödülünüzü almak için lütfen çekiliş sahibi <@${updatedGiveaway.hostId}> ile iletişime geçin.`,
             });
             updatedGiveaway.winnerPingMessageId = winnerPingMsg.id;
             await saveGiveaway(interaction.client, interaction.guildId, updatedGiveaway);
 
-            logger.info(`Giveaway ended with ${winners.length} winner(s): ${messageId}`);
+            logger.info(`Çekiliş ${winners.length} kazananla sona erdi. Mesaj ID: ${messageId}`);
 
             try {
                 await logEvent({
@@ -144,22 +144,22 @@ export default {
                     guildId: interaction.guildId,
                     eventType: EVENT_TYPES.GIVEAWAY_WINNER,
                     data: {
-                        description: `Giveaway ended with ${winners.length} winner(s)`,
+                        description: `Çekiliş ${winners.length} kazananla sona erdi`,
                         channelId: channel.id,
                         userId: interaction.user.id,
                         fields: [
                             {
-                                name: 'Prize',
-                                value: updatedGiveaway.prize || 'Mystery Prize!',
+                                name: 'Ödül',
+                                value: updatedGiveaway.prize || 'Gizemli Ödül!',
                                 inline: true
                             },
                             {
-                                name: 'Winners',
+                                name: 'Kazananlar',
                                 value: winnerMentions,
                                 inline: false
                             },
                             {
-                                name: 'Entries',
+                                name: 'Katılımcı Sayısı',
                                 value: endResult.participantCount.toString(),
                                 inline: true
                             }
@@ -167,22 +167,22 @@ export default {
                     }
                 });
             } catch (logError) {
-                logger.debug('Error logging giveaway winner event:', logError);
+                logger.debug('Çekiliş kazanma olayı loglanırken hata oluştu:', logError);
             }
         } else {
             await channel.send({
-                content: `The giveaway for **${updatedGiveaway.prize}** has ended with no valid entries.`,
+                content: `**${updatedGiveaway.prize}** için yapılan çekiliş, geçerli bir katılım olmadığı için kazanan olmadan sona erdi.`,
             });
-            logger.info(`Giveaway ended with no winners: ${messageId}`);
+            logger.info(`Çekiliş kazanan olmadan sona erdi. Mesaj ID: ${messageId}`);
         }
 
-        logger.info(`Giveaway successfully ended by ${interaction.user.tag}: ${messageId}`);
+        logger.info(`Çekiliş ${interaction.user.tag} tarafından başarıyla sonlandırıldı. Mesaj ID: ${messageId}`);
 
         return InteractionHelper.safeReply(interaction, {
             embeds: [
                 successEmbed(
-                    "Giveaway Ended ✅",
-                    `Successfully ended the giveaway for **${updatedGiveaway.prize}** in ${channel}. Selected ${winners.length} winner(s) from ${endResult.participantCount} entries.`,
+                    "Çekiliş Sonlandırıldı ✅",
+                    `**${updatedGiveaway.prize}** çekilişi ${channel} kanalında başarıyla sonlandırıldı. ${endResult.participantCount} katılımcı arasından ${winners.length} kazanan belirlendi.`,
                 ),
             ],
             flags: MessageFlags.Ephemeral,
