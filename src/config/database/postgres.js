@@ -2,25 +2,58 @@ import { assertAllowlistedIdentifier } from '../../utils/sqlIdentifiers.js';
 import { EXPECTED_SCHEMA_LABEL, EXPECTED_SCHEMA_VERSION } from './schemaVersion.js';
 
 const configuredTables = {
+    // Orijinal İngilizce anahtarlar ve altlarında tekil Türkçe karşılıkları
     guilds: 'guilds',
+    sunucu: 'guilds',
+
     users: 'users',
+    kullanıcı: 'users',
+
     guild_users: 'guild_users',
+    sunucu_kullanıcısı: 'guild_users',
+
     birthdays: 'birthdays',
+    doğumgünü: 'birthdays', // İstediğin gibi birleşik yapıldı
+
     giveaways: 'giveaways',
+    çekiliş: 'giveaways',
+
     tickets: 'ticket_data',
+    bilet: 'ticket_data',
+
     afk_status: 'afk_status',
+    afk_durumu: 'afk_status',
+
     welcome_configs: 'welcome_configs',
+    karşılama_ayarı: 'welcome_configs',
+
     leveling_configs: 'leveling_configs',
+    seviye_ayarı: 'leveling_configs',
+
     user_levels: 'user_levels',
+    kullanıcı_seviyesi: 'user_levels',
+
     economy: 'economy',
+    ekonomi: 'economy',
+
     invite_tracking: 'invite_tracking',
+    davet_takibi: 'invite_tracking',
+
     application_roles: 'application_roles',
+    başvuru_rolü: 'application_roles',
+
     verification_audit: 'verification_audit',
+    onay_denetimi: 'verification_audit',
+
     temp_data: 'temp_data',
+    geçici_veri: 'temp_data',
+
     cache_data: 'cache_data',
+    önbellek_verisi: 'cache_data',
 };
 
 const allowedTableIdentifiers = new Set([
+    // Orijinal Veritabanı Tablo İsimleri
     'guilds',
     'users',
     'guild_users',
@@ -37,12 +70,30 @@ const allowedTableIdentifiers = new Set([
     'verification_audit',
     'temp_data',
     'cache_data',
+
+    // Filtre İçin Tekil Türkçe Karşılıklar
+    'sunucu',
+    'kullanıcı',
+    'sunucu_kullanıcısı',
+    'doğumgünü', // İzin verilenler listesinde de güncellendi
+    'çekiliş',
+    'bilet',
+    'afk_durumu',
+    'karşılama_ayarı',
+    'seviye_ayarı',
+    'kullanıcı_seviyesi',
+    'ekonomi',
+    'davet_takibi',
+    'başvuru_rolü',
+    'onay_denetimi',
+    'geçici_veri',
+    'önbellek_verisi'
 ]);
 
 const validatedTables = Object.fromEntries(
     Object.entries(configuredTables).map(([key, value]) => [
         key,
-        assertAllowlistedIdentifier(value, allowedTableIdentifiers, `PostgreSQL table identifier (${key})`),
+        assertAllowlistedIdentifier(value, allowedTableIdentifiers, `PostgreSQL tablo belirteci (${key})`),
     ])
 );
 
@@ -107,7 +158,6 @@ export const pgConfig = {
     url: process.env.POSTGRES_URL || process.env.DATABASE_URL || DEFAULT_POSTGRES_URL,
     
     options: {
-        
         host: process.env.POSTGRES_HOST || 'localhost',
         port: parseInt(process.env.POSTGRES_PORT) || 5432,
         database: process.env.POSTGRES_DB || 'darknexus', // Varsayılan yerel veritabanı adı güncellendi
@@ -134,62 +184,42 @@ export const pgConfig = {
     
     defaultTTL: {
         userSession: 86400,
-        
         temp: 3600,
-        
         cache: 1800,
-        
         guildConfig: null,
-        
         economy: null,
-        
         leveling: null,
-        
         giveaway: null,
-        
         ticket: 604800,
-        
         afk: 86400,
-        
         welcome: null,
-        
         birthday: null,
     },
     
     features: {
         pooling: true,
         ssl: process.env.NODE_ENV === 'production',
-        
         metrics: true,
-        
         debug: process.env.NODE_ENV === 'development',
-        
         autoCreateTables: true,
-        
         autoMigrate: process.env.AUTO_MIGRATE !== 'false',
     },
     
     healthCheck: {
         enabled: true,
-        
         interval: 30000,
-        
         maxFailures: 3,
-        
         query: 'SELECT 1',
     },
     
+    maxConnections: parseInt(process.env.POSTGRES_MAX_CONNECTIONS) || 20,
+    
     migration: {
         enabled: true,
-        
         table: 'schema_migrations',
-        
         directory: 'database/migrations',
-        
         rollbackOnFailure: false,
-
         expectedVersion: EXPECTED_SCHEMA_VERSION,
-
         expectedLabel: EXPECTED_SCHEMA_LABEL,
     }
 };
