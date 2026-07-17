@@ -1,152 +1,188 @@
 /**
- * Command Aliases Configuration
- * Maps shortened command names to their full command names
+ * Komut Takma Ad Yapılandırması
+ * Kısaltılmış veya alternatif Türkçe komut isimlerini tam komut isimlerine eşler
  */
 
 export const commandAliases = {
+    // Ekonomi Komutları
+    'bakiye': 'balance',
+    'para': 'balance',
+    'nakit': 'balance',
     'bal': 'balance',
-    'money': 'balance',
-    'cash': 'balance',
+    'yatir': 'deposit',
+    'cek': 'withdraw',
+    'calis': 'work',
+    'gunluk': 'daily',
+    'kumar': 'gamble',
+    'bahis': 'gamble',
+    'soy': 'rob',
+    'soygubay': 'rob',
+    'suc': 'crime',
+    'ode': 'pay',
+    'ver': 'pay',
+    'gonder': 'pay',
 
-    'dep': 'deposit',
-    'with': 'withdraw',
-    'work': 'work',
-    'daily': 'daily',
-    'gamble': 'gamble',
-    'bet': 'gamble',
-    'rob': 'rob',
-    'crime': 'crime',
-    'pay': 'pay',
-    'give': 'pay',
-    'send': 'pay',
-
+    // Genel Komutlar
+    'gecikme': 'ping',
     'ping': 'ping',
-    'help': 'help',
+    'yardim': 'help',
+    'y': 'help',
     'h': 'help',
-    'info': 'help',
+    'bilgi': 'help',
 
-    'ban': 'ban',
-    'kick': 'kick',
-    'mute': 'timeout',
-    'warn': 'warn',
-    'clear': 'purge',
-    'purge': 'purge',
-    'untimeout': 'untimeout',
-    'unmute': 'untimeout',
+    // Moderasyon ve Yönetici Komutları (Kurbancılara İşlem Yapılan Kısım)
+    'yasakla': 'ban',
+    'engelle': 'ban',
+    'at': 'kick',
+    'sustur': 'timeout',
+    'mut': 'timeout',
+    'ceza': 'timeout',
+    'uyar': 'warn',
+    'temizle': 'purge',
+    'sil': 'purge',
+    'susturma-kaldir': 'untimeout',
+    'susturmakaldir': 'untimeout',
 
-    'rank': 'rank',
-    'lvl': 'rank',
+    // Seviye Sistemi
+    'seviye': 'rank',
+    'seviyem': 'rank',
     'xp': 'rank',
-    'leaderboard': 'leaderboard',
-    'lb': 'leaderboard',
+    'siralama': 'leaderboard',
+    'skor': 'leaderboard',
     'top': 'leaderboard',
 
-    'shop': 'shop',
-    'buy': 'buy',
-    'inventory': 'inventory',
-    'inv': 'inventory',
-    'items': 'inventory',
+    // Mağaza ve Envanter
+    'market': 'shop',
+    'magaza': 'shop',
+    'al': 'buy',
+    'satinal': 'buy',
+    'envanter': 'inventory',
+    'canta': 'inventory',
+    'esyalar': 'inventory',
 
-    'user': 'userinfo',
+    // Kullanıcı Bilgisi
+    'kullanici': 'userinfo',
+    'kullanicibilgi': 'userinfo',
+    'profil': 'userinfo',
     'avatar': 'avatar',
     'pfp': 'avatar',
-    'icon': 'avatar',
+    'resim': 'avatar',
 
-    'bd': 'birthday',
-    'bday': 'birthday',
-    'b': 'birthday',
+    // Doğum Günü
+    'dogumgunu': 'birthday',
+    'dg': 'birthday',
 
-    'flip': 'flip',
-    'coin': 'flip',
-    'roll': 'roll',
-    'dice': 'roll',
-    'fight': 'fight',
+    // Eğlence ve Oyunlar
+    'yazitura': 'flip',
+    'yazi-tura': 'flip',
+    'para-at': 'flip',
+    'zar': 'roll',
+    'zarat': 'roll',
+    'dovus': 'fight',
+    'savas': 'fight',
 
-    'gcreate': 'gcreate',
-    'gstart': 'gcreate',
-    'gend': 'gend',
-    'gstop': 'gend',
-    'gdelete': 'gdelete',
-    'greroll': 'greroll',
-    'groll': 'greroll',
+    // Çekiliş Komutları
+    'cekilis-olustur': 'gcreate',
+    'cekilisbaslat': 'gcreate',
+    'cekilisbitir': 'gend',
+    'cekilisdurdur': 'gend',
+    'cekilissil': 'gdelete',
+    'cekilis-yenile': 'greroll',
+    'yeniden-cek': 'greroll',
 
-    'ticket': 'ticket',
-    't': 'ticket',
-    'new': 'ticket',
+    // Destek Talebi (Ticket)
+    'destek': 'ticket',
+    'talep': 'ticket',
+    'yeni': 'ticket',
 
-    'ver': 'verify',
-    'vadmin': 'verification',
-    'av': 'autoverify',
+    // Doğrulama Komutları
+    'dogrula': 'verify',
+    'onayla': 'verify',
+    'dogrulama-yonetim': 'verification',
+    'otodogrula': 'autoverify',
 
-    'welcome': 'welcome',
-    'greet': 'greet',
-    'goodbye': 'goodbye',
-    'autorole': 'autorole',
+    // Karşılama ve Ayarlar
+    'hosgeldin': 'welcome',
+    'karsila': 'greet',
+    'gorusuruz': 'goodbye',
+    'otorol': 'autorole',
 
-    'calc': 'calculate',
-    'math': 'calculate',
-    'weather': 'weather',
-    'todo': 'todo',
-    'report': 'report',
-    'userinfo': 'userinfo',
+    // Araçlar ve Bilgisi
+    'hesapla': 'calculate',
+    'matematik': 'calculate',
+    'hava': 'weather',
+    'havadurumu': 'weather',
+    'yapilacaklar': 'todo',
+    'rapor': 'report',
+    'sikayet': 'report',
     'whois': 'userinfo',
-    'ui': 'userinfo',
 
-    'serverstats': 'serverstats',
+    // Sunucu İstatistikleri
+    'sunucuistatistik': 'serverstats',
+    'istatistik': 'serverstats',
     'ss': 'serverstats',
-    'sstats': 'serverstats',
 
-    'rr': 'reactroles',
-    'reactionroles': 'reactroles',
+    // Tepki Rolleri
+    'tepkirol': 'reactroles',
+    'tepki-rolleri': 'reactroles',
 
+    // Ses Kanalı Oluşturma
+    'sesolustur': 'jointocreate',
     'jtc': 'jointocreate',
-    'jointocreate': 'jointocreate',
 
-    'np': 'nowplaying',
-    'now': 'nowplaying',
+    // Müzik Durumu
+    'suanchalan': 'nowplaying',
+    'necaliyor': 'nowplaying',
 };
 
 export const subcommandAliases = {
-    'l': 'list',
-    'ls': 'list',
-    's': 'set',
-    'i': 'info',
-    'r': 'remove',
-    'rm': 'remove',
-    'del': 'remove',
-    'n': 'next',
-    'sc': 'setchannel',
+    // Genel Alt Komut Eşleşmeleri
+    'liste': 'list',
+    'listele': 'list',
+    'ayarla': 'set',
+    'kur': 'set',
+    'bilgi': 'info',
+    'detay': 'info',
+    'kaldir': 'remove',
+    'sil': 'remove',
+    'sonraki': 'next',
+    'kanalayarla': 'setchannel',
 
-    'a': 'add',
-    'c': 'complete',
-    'done': 'complete',
-    'd': 'complete',
+    // İşlem / Durum Eşleşmeleri
+    'ekle': 'add',
+    'tamamla': 'complete',
+    'yapildi': 'complete',
+    'bitir': 'complete',
 
-    'start': 'create',
-    'stop': 'end',
-    'roll': 'reroll',
-
-    'add': 'add',
-    'remove': 'remove',
-    'list': 'list',
+    // Çekiliş ve Yönetim Alt Komutları
+    'baslat': 'create',
+    'olustur': 'create',
+    'durdur': 'end',
+    'yeniden-cek': 'reroll',
 };
 
 /**
- * Resolve a command alias to its full command name
- * @param {string} commandName - The command name (could be an alias)
- * @returns {string} - The full command name, or the original if not an alias
+ * Verilen komut takma adını tam komut ismine güvenli şekilde dönüştürür
+ * @param {string} commandName - Komut adı veya takma adı
+ * @returns {string} - Tam komut adı, geçersiz girdi veya eşleşme yoksa girdinin kendisi
  */
 export function resolveCommandAlias(commandName) {
+    if (!commandName || typeof commandName !== 'string') {
+        return commandName;
+    }
     const normalized = commandName.toLowerCase();
     return commandAliases[normalized] || commandName;
 }
 
 /**
- * Resolve a subcommand alias to its full subcommand name
- * @param {string} subcommandName - The subcommand name (could be an alias)
- * @returns {string} - The full subcommand name, or the original if not an alias
+ * Verilen alt komut takma adını tam alt komut ismine güvenli şekilde dönüştürür
+ * @param {string} subcommandName - Alt komut adı veya takma adı
+ * @returns {string} - Tam alt komut adı, geçersiz girdi veya eşleşme yoksa girdinin kendisi
  */
 export function resolveSubcommandAlias(subcommandName) {
+    if (!subcommandName || typeof subcommandName !== 'string') {
+        return subcommandName;
+    }
     const normalized = subcommandName.toLowerCase();
     return subcommandAliases[normalized] || subcommandName;
 }
