@@ -60,8 +60,8 @@ export async function createInitialHelpMenu(client) {
 
     const options = [
         {
-            label: "📋 All Commands",
-            description: "Browse every available command in a single list",
+            label: "📋 Tüm Komutlar",
+            description: "Mevcut tüm komutları tek bir listede inceleyin",
             value: ALL_COMMANDS_ID,
         },
         ...categoryDirs.map((category) => {
@@ -69,7 +69,7 @@ export async function createInitialHelpMenu(client) {
             const icon = CATEGORY_ICONS[categoryName] || "🔍";
             return {
                 label: `${icon} ${categoryName}`,
-                description: `View commands in the ${categoryName} category`,
+                description: `${categoryName} kategorisindeki komutları görüntüleyin`,
                 value: category,
             };
         }),
@@ -77,54 +77,55 @@ export async function createInitialHelpMenu(client) {
 
     const botName = client?.user?.username || "Bot";
     const embed = createEmbed({
-        title: `📖 ${botName} Help`,
-        description: 'Set up your server, pick what to enable, then browse commands below.',
+        title: `📖 ${botName} Yardım Paneli`,
+        description: 'Sunucunuzu kurun, nelerin aktif olacağını seçin ve ardından aşağıdaki komutlara göz atın.',
         color: 'primary',
         thumbnail: client.user?.displayAvatarURL?.({ size: 1024 }),
         fields: [
             {
-                name: '🚀 Getting Started',
+                name: '🚀 Başlangıç Rehberi',
                 value: [
-                    '**1. Launch setup** — Run `/configwizard` to configure prefix, mod role, and logs.',
-                    '**2. Enable systems** — Use `/commands dashboard` to turn categories on or off.',                    '**3. Browse commands** — Use the menu below to view categories and commands.',
+                    '**1. Kurulumu başlatın** — Prefix, yetkili rolü ve log kanallarını ayarlamak için `/configwizard` komutunu çalıştırın.',
+                    '**2. Sistemleri aktif edin** — Kategorileri açıp kapatmak için `/commands dashboard` komutunu kullanın.',
+                    '**3. Komutları inceleyin** — Kategorileri ve komutları görmek için aşağıdaki menüyü kullanın.',
                 ].join('\n'),
                 inline: false,
             },
             {
-                name: 'ℹ️ How It Works',
+                name: 'ℹ️ Nasıl Çalışır?',
                 value: [
-                    '• Dashboard commands manage each feature visually',
-                    '• Settings are saved per server',
-                    '• Slash commands and prefixes both work once enabled',
+                    '• Panel (dashboard) komutları her özelliği görsel olarak yönetmenizi sağlar',
+                    '• Ayarlar her sunucu için ayrı ayrı kaydedilir',
+                    '• Sistemler aktif edildikten sonra hem Slash komutları hem de prefixler çalışır',
                 ].join('\n'),
                 inline: false,
             },
             {
                 name: '\u200B',
-                value: `-# ${botName} is [open source](https://youtu.be/1jCZX8s3bJE?si=NPOYx-vxVE1I5vJK)`,
+                value: `-# ${botName} [açık kaynak kodludur](https://youtu.be/1jCZX8s3bJE?si=NPOYx-vxVE1I5vJK)`,
                 inline: false,
             },
         ],
     });
 
     embed.setFooter({ 
-        text: "Made with ❤️" 
+        text: "❤️ ile tasarlandı" 
     });
     embed.setTimestamp();
 
     const bugReportButton = new ButtonBuilder()
         .setCustomId(BUG_REPORT_BUTTON_ID)
-        .setLabel("Report Bug")
+        .setLabel("Hata Bildir")
         .setStyle(ButtonStyle.Danger);
 
     const supportButton = new ButtonBuilder()
-        .setLabel("Support Server")
+        .setLabel("Destek Sunucusu")
         .setURL("https://discord.gg/QnWNz2dKCE")
         .setStyle(ButtonStyle.Link);
 
     const selectRow = createSelectMenu(
         CATEGORY_SELECT_ID,
-        "Select to view the commands",
+        "Komutları görüntülemek için bir kategori seçin",
         options,
     );
 
@@ -142,8 +143,8 @@ export async function createInitialHelpMenu(client) {
 export default {
     slashOnly: true,
     data: new SlashCommandBuilder()
-        .setName("help")
-        .setDescription("Displays the help menu with all available commands"),
+        .setName("yardim")
+        .setDescription("Mevcut tüm komutların bulunduğu yardım menüsünü görüntüler"),
 
     async execute(interaction, guildConfig, client) {
         
@@ -164,8 +165,8 @@ export default {
                 }
 
                 const closedEmbed = createEmbed({
-                    title: "Help menu closed",
-                    description: "Help menu has been closed, use /help again.",
+                    title: "Yardım menüsü kapatıldı",
+                    description: "Yardım menüsünün süresi dolduğu için kapatıldı, tekrar açmak için /yardim yazın.",
                     color: "secondary",
                 });
 
@@ -174,7 +175,7 @@ export default {
                     components: [],
                 });
             } catch (error) {
-                logger.debug('Help menu close edit failed (interaction may have expired):', error?.message);
+                logger.debug('Yardım menüsü kapatma güncellemesi başarısız oldu (etkileşim süresi dolmuş olabilir):', error?.message);
             }
         }, HELP_MENU_TIMEOUT_MS);
     },
