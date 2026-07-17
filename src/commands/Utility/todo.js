@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, PermissionsBitField, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { createEmbed, successEmbed, infoEmbed, warningEmbed } from '../../utils/embeds.js';
 import { getFromDb, setInDb } from '../../utils/database.js';
 import { logger } from '../../utils/logger.js';
@@ -13,131 +13,131 @@ function generateShareId() {
 export default {
     data: new SlashCommandBuilder()
         .setName("todo")
-        .setDescription("Manage your personal to-do list")
+        .setDescription("Kişisel veya ortak yapılacaklar listenizi yönetin")
         .addSubcommand(subcommand =>
             subcommand
                 .setName("add")
-                .setDescription("Add a task to your to-do list")
+                .setDescription("Yapılacaklar listenize yeni bir görev ekler")
                 .addStringOption(option =>
                     option
                         .setName("task")
-                        .setDescription("The task to add")
+                        .setDescription("Eklenecek görev")
                         .setRequired(true)
                 )
         )
         .addSubcommand(subcommand =>
             subcommand
                 .setName("list")
-                .setDescription("View your to-do list")
+                .setDescription("Yapılacaklar listenizi görüntüler")
         )
         .addSubcommand(subcommand =>
             subcommand
                 .setName("complete")
-                .setDescription("Mark a task as complete")
+                .setDescription("Bir görevi tamamlandı olarak işaretler")
                 .addIntegerOption(option =>
                     option
                         .setName("number")
-                        .setDescription("The number of the task to complete")
+                        .setDescription("Tamamlanacak görevin numarası")
                         .setRequired(true)
                 )
         )
         .addSubcommand(subcommand =>
             subcommand
                 .setName("remove")
-                .setDescription("Remove a task from your to-do list")
+                .setDescription("Yapılacaklar listenizden bir görevi siler")
                 .addIntegerOption(option =>
                     option
                         .setName("number")
-                        .setDescription("The number of the task to remove")
+                        .setDescription("Silinecek görevin numarası")
                         .setRequired(true)
                 )
         )
         .addSubcommandGroup(group => 
             group
                 .setName("share")
-                .setDescription("Manage shared to-do lists")
+                .setDescription("Ortak yapılacaklar listelerini yönetir")
                 .addSubcommand(subcommand =>
                     subcommand
                         .setName("create")
-                        .setDescription("Create a new shared to-do list")
+                        .setDescription("Yeni bir ortak yapılacaklar listesi oluşturur")
                         .addStringOption(option =>
                             option
                                 .setName("name")
-                                .setDescription("Name for the shared list")
+                                .setDescription("Ortak liste için bir isim belirleyin")
                                 .setRequired(true)
                         )
                 )
                 .addSubcommand(subcommand =>
                     subcommand
                         .setName("add")
-                        .setDescription("Add a member to a shared list")
+                        .setDescription("Ortak listeye yeni bir üye ekler")
                         .addStringOption(option =>
                             option
                                 .setName("list_id")
-                                .setDescription("ID of the shared list")
+                                .setDescription("Ortak listenin benzersiz ID'si")
                                 .setRequired(true)
                         )
                         .addUserOption(option =>
                             option
                                 .setName("user")
-                                .setDescription("User to add to the list")
+                                .setDescription("Listeye eklenecek kullanıcı")
                                 .setRequired(true)
                         )
                 )
                 .addSubcommand(subcommand =>
                     subcommand
                         .setName("view")
-                        .setDescription("View a shared to-do list")
+                        .setDescription("Ortak bir yapılacaklar listesini görüntüler")
                         .addStringOption(option =>
                             option
                                 .setName("list_id")
-                                .setDescription("ID of the shared list")
+                                .setDescription("Görüntülenecek ortak listenin ID'si")
                                 .setRequired(true)
                         )
                 )
                 .addSubcommand(subcommand =>
                     subcommand
                         .setName("addtask")
-                        .setDescription("Add a task to a shared to-do list")
+                        .setDescription("Ortak yapılacaklar listesine yeni bir görev ekler")
                         .addStringOption(option =>
                             option
                                 .setName("list_id")
-                                .setDescription("ID of the shared list")
+                                .setDescription("Görevin ekleneceği ortak listenin ID'si")
                                 .setRequired(true)
                         )
                         .addStringOption(option =>
                             option
                                 .setName("task")
-                                .setDescription("The task to add")
+                                .setDescription("Eklenecek görev")
                                 .setRequired(true)
                         )
                 )
                 .addSubcommand(subcommand =>
                     subcommand
                         .setName("remove")
-                        .setDescription("Remove a task from a shared to-do list")
+                        .setDescription("Ortak yapılacaklar listesinden bir görevi siler")
                         .addStringOption(option =>
                             option
                                 .setName("list_id")
-                                .setDescription("ID of the shared list")
+                                .setDescription("Görevin silineceği ortak listenin ID'si")
                                 .setRequired(true)
                         )
                         .addIntegerOption(option =>
                             option
                                 .setName("number")
-                                .setDescription("The number of the task to remove")
+                                .setDescription("Silinecek görevin numarası")
                                 .setRequired(true)
                         )
                 )
         )
         .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),
-    category: "Utility",
+    category: "Faydalı",
 
     async execute(interaction, config, client) {
         const userId = interaction.user.id;
-                const subcommand = interaction.options.getSubcommand();
-                const shareSubcommand = interaction.options.getSubcommandGroup() === 'share' ? interaction.options.getSubcommand() : null;
+        const subcommand = interaction.options.getSubcommand();
+        const shareSubcommand = interaction.options.getSubcommandGroup() === 'share' ? interaction.options.getSubcommand() : null;
 
         async function getOrCreateSharedList(listId, creatorId = null, listName = null) {
             const listKey = `shared_todo_${listId}`;
@@ -197,9 +197,10 @@ export default {
                     return await InteractionHelper.safeEditReply(interaction, {
                         embeds: [
                             successEmbed(
-                                "Shared List Created",
-                                `Created shared list "${listName}" with ID: \`${listId}\`\n` +
-                                `Use \`/todo share add list_id:${listId} user:@username\` to add members.`
+                                "Ortak Liste Oluşturuldu",
+                                `"${listName}" adlı ortak liste başarıyla oluşturuldu!\n\n` +
+                                `🔑 **Liste ID:** \`${listId}\`\n\n` +
+                                `👥 Üye eklemek için: \`/todo share add list_id:${listId} user:@Kullanıcı\``
                             )
                         ]
                     });
@@ -211,11 +212,11 @@ export default {
 
                     const listData = await getOrCreateSharedList(listId);
                     if (!listData) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Shared list not found.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen ortak liste bulunamadı.' });
                     }
 
                     if (listData.creatorId !== userId) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Only the list creator can add members.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Bu ortak listeye yalnızca liste sahibi üye ekleyebilir.' });
                     }
 
                     if (!listData.members.includes(memberToAdd.id)) {
@@ -231,13 +232,13 @@ export default {
 
                         return await InteractionHelper.safeEditReply(interaction, {
                             embeds: [
-                                successEmbed('Member Added', 
-                                    `Added ${memberToAdd.username} to the shared list "${listData.name}"`
+                                successEmbed('Üye Eklendi', 
+                                    `**${memberToAdd.username}** kullanıcısı "${listData.name}" ortak listesine başarıyla eklendi.`
                                 )
                             ]
                         });
                     } else {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'User is already a member of this list.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Bu kullanıcı zaten bu listenin bir üyesi.' });
                     }
                 }
 
@@ -246,92 +247,69 @@ export default {
                     const listData = await getOrCreateSharedList(listId);
 
                     if (!listData) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Shared list not found.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen ortak liste bulunamadı.' });
                     }
 
                     if (!listData.members.includes(userId)) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'You don\'t have access to this list.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Bu listeyi görüntülemek için yetkiniz bulunmuyor.' });
                     }
 
+                    const memberList = listData.members.map(memberId => {
+                        const member = interaction.guild.members.cache.get(memberId);
+                        return member ? member.user.username : `<@${memberId}>`;
+                    }).join(', ');
+
+                    const owner = interaction.guild.members.cache.get(listData.creatorId);
+                    const ownerName = owner ? owner.user.username : `<@${listData.creatorId}>`;
+
+                    const buttons = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`shared_todo_add_${listId}`)
+                            .setLabel('Görev Ekle')
+                            .setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder()
+                            .setCustomId(`shared_todo_complete_${listId}`)
+                            .setLabel('Görevi Tamamla')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId(`shared_todo_remove_${listId}`)
+                            .setLabel('Görevi Sil')
+                            .setStyle(ButtonStyle.Danger)
+                    );
+
                     if (listData.tasks.length === 0) {
-                        const memberList = listData.members.map(memberId => {
-                            const member = interaction.guild.members.cache.get(memberId);
-                            return member ? member.user.username : `<@${memberId}>`;
-                        }).join(',');
-
-                        const owner = interaction.guild.members.cache.get(listData.creatorId);
-                        const ownerName = owner ? owner.user.username : `<@${listData.creatorId}>`;
-
                         return await InteractionHelper.safeEditReply(interaction, {
                                 embeds: [
                                     successEmbed(
                                         `📋 **${listData.name}**\n\n` +
-                                        `👑 **Owner:** ${ownerName}\n` +
-                                        `👥 **Members:** ${memberList}\n\n` +
-                                        `*This list is currently empty. Use the "Add Task" button to add tasks!*`,
-                                        `Shared List (ID: \`${listId}\`)`
+                                        `👑 **Kurucu:** ${ownerName}\n` +
+                                        `👥 **Üyeler:** ${memberList}\n\n` +
+                                        `*Bu liste şu anda boş. Görev eklemek için aşağıdaki butonu kullanabilirsiniz!*`,
+                                        `Ortak Liste (ID: \`${listId}\`)`
                                     )
                                 ],
-                                components: [
-                                    new ActionRowBuilder().addComponents(
-                                        new ButtonBuilder()
-                                            .setCustomId(`shared_todo_add_${listId}`)
-                                            .setLabel('Add Task')
-                                            .setStyle(ButtonStyle.Primary),
-                                        new ButtonBuilder()
-                                            .setCustomId(`shared_todo_complete_${listId}`)
-                                            .setLabel('Complete Task')
-                                            .setStyle(ButtonStyle.Success),
-                                        new ButtonBuilder()
-                                            .setCustomId(`shared_todo_remove_${listId}`)
-                                            .setLabel('Remove Task')
-                                            .setStyle(ButtonStyle.Danger)
-                                    )
-                                ]
+                                components: [buttons]
                             });
                     }
 
                     const taskList = listData.tasks
                         .map(task => 
-                            `${task.completed ? '✅' : '📝'} #${task.id} ${task.text}` +
+                            `${task.completed ? '✅' : '📝'} #${task.id}${task.text} ` +
                             `\`[${new Date(task.createdAt).toLocaleDateString()}]` +
-                            (task.completed ? `• Completed by ${task.completedBy}` : '') + '`'
+                            (task.completed ? ` • Tamamlayan: <@${task.completedBy}>` : '') + '`'
                         )
                         .join('\n');
 
-                    const memberList = listData.members.map(memberId => {
-                        const member = interaction.guild.members.cache.get(memberId);
-                        return member ? member.user.username : `<@${memberId}>`;
-                    }).join(',');
-
-                    const owner = interaction.guild.members.cache.get(listData.creatorId);
-                    const ownerName = owner ? owner.user.username : `<@${listData.creatorId}>`;
-
                     const fullListDisplay = `📋 **${listData.name}**\n\n` +
-                        `👑 **Owner:** ${ownerName}\n` +
-                        `👥 **Members:** ${memberList}\n\n` +
-                        `**Tasks:**\n${taskList}`;
+                        `👑 **Kurucu:** ${ownerName}\n` +
+                        `👥 **Üyeler:** ${memberList}\n\n` +
+                        `**Görevler:**\n${taskList}`;
 
                     return await InteractionHelper.safeEditReply(interaction, {
                         embeds: [
-                            successEmbed(`Shared List (ID: \`${listId}\`)`, fullListDisplay)
+                            successEmbed(`Ortak Liste (ID: \`${listId}\`)`, fullListDisplay)
                         ],
-                        components: [
-                            new ActionRowBuilder().addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId(`shared_todo_add_${listId}`)
-                                    .setLabel('Add Task')
-                                    .setStyle(ButtonStyle.Primary),
-                                new ButtonBuilder()
-                                    .setCustomId(`shared_todo_complete_${listId}`)
-                                    .setLabel('Complete Task')
-                                    .setStyle(ButtonStyle.Success),
-                                new ButtonBuilder()
-                                    .setCustomId(`shared_todo_remove_${listId}`)
-                                    .setLabel('Remove Task')
-                                    .setStyle(ButtonStyle.Danger)
-                            )
-                        ]
+                        components: [buttons]
                     });
                 }
 
@@ -342,11 +320,11 @@ export default {
                     const listData = await getOrCreateSharedList(listId);
 
                     if (!listData) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Shared list not found.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen ortak liste bulunamadı.' });
                     }
 
                     if (!listData.members.includes(userId)) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'You don\'t have access to this list.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Bu ortak listeye görev ekleme yetkiniz yok.' });
                     }
 
                     const newTask = {
@@ -362,7 +340,7 @@ export default {
 
                     return await InteractionHelper.safeEditReply(interaction, {
                         embeds: [
-                            successEmbed('Task Added', `Added "${taskText}" to the shared list "${listData.name}"`)
+                            successEmbed('Görev Eklendi', `"${taskText}" görevi "${listData.name}" ortak listesine eklendi.`)
                         ]
                     });
                 }
@@ -374,16 +352,16 @@ export default {
                     const listData = await getOrCreateSharedList(listId);
 
                     if (!listData) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Shared list not found.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen ortak liste bulunamadı.' });
                     }
 
                     if (!listData.members.includes(userId)) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'You don\'t have access to this list.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Bu ortak listeden görev silme yetkiniz yok.' });
                     }
 
                     const taskIndex = listData.tasks.findIndex(task => task.id === taskNumber);
                     if (taskIndex === -1) {
-                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Task not found.' });
+                        return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen numaralı görev bulunamadı.' });
                     }
 
                     const [removedTask] = listData.tasks.splice(taskIndex, 1);
@@ -391,7 +369,7 @@ export default {
 
                     return await InteractionHelper.safeEditReply(interaction, {
                         embeds: [
-                            successEmbed('Task Removed', `Removed "${removedTask.text}" from the shared list "${listData.name}".`)
+                            successEmbed('Görev Silindi', `"${removedTask.text}" görevi "${listData.name}" ortak listesinden silindi.`)
                         ]
                     });
                 }
@@ -426,8 +404,8 @@ export default {
                 return await InteractionHelper.safeEditReply(interaction, {
                     embeds: [
                         successEmbed(
-                            "Task Added",
-                            `Added "${taskText}" to your to-do list.`
+                            "Görev Eklendi",
+                            `"${taskText}" kişisel yapılacaklar listenize eklendi.`
                         ),
                     ],
                 });
@@ -436,20 +414,20 @@ export default {
             case 'list': {
                 if (userData.tasks.length === 0) {
                     return await InteractionHelper.safeEditReply(interaction, {
-                        embeds: [successEmbed('Your to-do list is empty!', "Your To-Do List")],
+                        embeds: [successEmbed('Yapılacaklar listeniz şu anda boş!', "Yapılacaklar Listeniz")],
                     });
                 }
 
                 const taskList = userData.tasks
                     .map(task => 
-                        `${task.completed ? '✅' : '📝'} #${task.id} ${task.text}` +
-                        `\`[${new Date(task.createdAt).toLocaleDateString()}\``
+                        `${task.completed ? '✅' : '📝'} #${task.id}${task.text} ` +
+                        `\`[${new Date(task.createdAt).toLocaleDateString()}]\``
                     )
                     .join('\n');
 
                 return await InteractionHelper.safeEditReply(interaction, {
                     embeds: [
-                        successEmbed('Your To-Do List', taskList)
+                        successEmbed('Yapılacaklar Listeniz', taskList)
                     ],
                 });
             }
@@ -459,11 +437,11 @@ export default {
                 const task = userData.tasks.find(t => t.id === taskNumber);
 
                 if (!task) {
-                    return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Task not found.' });
+                    return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen numaralı görev bulunamadı.' });
                 }
 
                 if (task.completed) {
-                    return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: `Task #${task.id} is already completed.` });
+                    return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: `#${task.id} numaralı görev zaten tamamlanmış.` });
                 }
 
                 task.completed = true;
@@ -471,7 +449,7 @@ export default {
 
                 return await InteractionHelper.safeEditReply(interaction, {
                     embeds: [
-                        successEmbed('Task Completed', `Marked "${task.text}" as complete!`)
+                        successEmbed('Görev Tamamlandı', `"${task.text}" görevi tamamlandı olarak işaretlendi!`)
                     ],
                 });
             }
@@ -481,7 +459,7 @@ export default {
                 const taskIndex = userData.tasks.findIndex(t => t.id === taskNumber);
 
                 if (taskIndex === -1) {
-                    return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Task not found.' });
+                    return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Belirtilen numaralı görev bulunamadı.' });
                 }
 
                 const [removedTask] = userData.tasks.splice(taskIndex, 1);
@@ -489,13 +467,13 @@ export default {
 
                 return await InteractionHelper.safeEditReply(interaction, {
                     embeds: [
-                        successEmbed('Task Removed', `Removed "${removedTask.text}" from your to-do list.`)
+                        successEmbed('Görev Silindi', `"${removedTask.text}" kişisel yapılacaklar listenizden silindi.`)
                     ],
                 });
             }
 
             default:
-                return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Invalid subcommand.' });
+                return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: 'Geçersiz alt komut.' });
         }
     },
 };
