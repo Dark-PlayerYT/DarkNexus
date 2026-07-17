@@ -7,63 +7,63 @@ import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { addXp } from './xpSystem.js';
 import { getUserLevelKey } from '../../utils/database/keys.js';
 
-const BASE_XP = 100;
-const XP_MULTIPLIER = 1.5;
-const MAX_LEVEL = 1000;
-const MIN_LEVEL = 0;
+const TEMEL_XP = 100;
+const XP_CARPANI = 1.5;
+const MAKS_SEVIYE = 1000;
+const MIN_SEVIYE = 0;
 
-export function getXpForLevel(level) {
-  if (!Number.isInteger(level) || level < 0 || level > MAX_LEVEL) {
+export function seviyeIcinGerekenXp(seviye) {
+  if (!Number.isInteger(seviye) || seviye < 0 || seviye > MAKS_SEVIYE) {
     throw new TitanBotError(
-      `Invalid level: ${level}. Must be between ${MIN_LEVEL} and ${MAX_LEVEL}`,
+      `Geçersiz seviye: ${seviye}. ${MIN_SEVIYE} ile ${MAKS_SEVIYE} arasında olmalı.`,
       ErrorTypes.VALIDATION,
-      'The level must be a valid number.'
+      'Seviye geçerli bir sayı olmalıdır.'
     );
   }
-  return 5 * Math.pow(level, 2) + 50 * level + 50;
+  return 5 * Math.pow(seviye, 2) + 50 * seviye + 50;
 }
 
-export function getLevelFromXp(xp) {
+export function xpdenSeviyeHesapla(xp) {
   if (!Number.isInteger(xp) || xp < 0) {
     throw new TitanBotError(
-      `Invalid XP: ${xp}`,
+      `Geçersiz XP: ${xp}`,
       ErrorTypes.VALIDATION,
-      'XP must be a non-negative number.'
+      'XP negatif olmayan bir sayı olmalıdır.'
     );
   }
 
-  let level = 0;
-  let xpNeeded = 0;
+  let seviye = 0;
+  let gerekenXp = 0;
   
-  while (xp >= getXpForLevel(level) && level < MAX_LEVEL) {
-    xpNeeded = getXpForLevel(level);
-    xp -= xpNeeded;
-    level++;
+  while (xp >= seviyeIcinGerekenXp(seviye) && seviye < MAKS_SEVIYE) {
+    gerekenXp = seviyeIcinGerekenXp(seviye);
+    xp -= gerekenXp;
+    seviye++;
   }
   
   return {
-    level: Math.min(level, MAX_LEVEL),
+    level: Math.min(seviye, MAKS_SEVIYE),
     currentXp: xp,
-    xpNeeded: getXpForLevel(Math.min(level, MAX_LEVEL))
+    xpNeeded: seviyeIcinGerekenXp(Math.min(seviye, MAKS_SEVIYE))
   };
 }
 
-export function calculateTotalXp(level, currentXp = 0) {
-  let total = currentXp;
-  for (let i = 0; i < level; i++) {
-    total += getXpForLevel(i);
+export function toplamXpHesapla(seviye, mevcutXp = 0) {
+  let toplam = mevcutXp;
+  for (let i = 0; i < seviye; i++) {
+    toplam += seviyeIcinGerekenXp(i);
   }
-  return total;
+  return toplam;
 }
 
-export async function getLeaderboard(client, guildId, limit = 10) {
+export async function liderlikTablosuGetir(client, sunucuId, limit = 10) {
   try {
     
-    if (!guildId || typeof guildId !== 'string') {
+    if (!sunucuId || typeof sunucuId !== 'string') {
       throw new TitanBotError(
-        'Invalid guild ID',
+        'Geçersiz sunucu ID',
         ErrorTypes.VALIDATION,
-        'Guild ID is required.'
+        'Sunucu ID gereklidir.'
       );
     }
 
@@ -71,90 +71,90 @@ export async function getLeaderboard(client, guildId, limit = 10) {
       limit = Math.min(Math.max(limit, 1), 100);
     }
 
-    const guild = client.guilds.cache.get(guildId);
-    if (!guild) {
-      logger.warn(`Guild ${guildId} not found in cache`);
+    const sunucu = client.guilds.cache.get(sunucuId);
+    if (!sunucu) {
+      logger.warn(`Sunucu ${sunucuId} önbellekte bulunamadı`);
       return [];
     }
     
-    const members = await guild.members.fetch().catch(error => {
-      logger.error(`Failed to fetch members for guild ${guildId}:`, error);
+    const uyeler = await sunucu.members.fetch().catch(hata => {
+      logger.error(`Sunucu ${sunucuId} üyeleri alınamadı:`, hata);
       return new Map();
     });
 
-    const leaderboard = [];
+    const liste = [];
     
-    for (const [userId, member] of members) {
-      if (member.user.bot) continue;
+    for (const [kullaniciId, uye] of uyeler) {
+      if (uye.user.bot) continue;
       
-      const data = await getUserLevelData(client, guildId, userId);
-      if (data && (data.totalXp > 0 || data.level > 0)) {
-        leaderboard.push({
-          userId,
-          username: member.user.username,
-          discriminator: member.user.discriminator,
-          ...data
+      const veri = await kullaniciSeviyeVerisiGetir(client, sunucuId, kullaniciId);
+      if (veri && (veri.totalXp > 0 || veri.level > 0)) {
+        liste.push({
+          userId: kullaniciId,
+          username: uye.user.username,
+          discriminator: uye.user.discriminator,
+          ...veri
         });
       }
     }
     
-    leaderboard.sort((a, b) => b.totalXp - a.totalXp);
+    liste.sort((a, b) => b.totalXp - a.totalXp);
     
-    leaderboard.forEach((entry, index) => {
-      entry.rank = index + 1;
+    liste.forEach((girdi, indeks) => {
+      girdi.rank = indeks + 1;
     });
     
-    return leaderboard.slice(0, limit);
+    return liste.slice(0, limit);
     
-  } catch (error) {
-    logger.error('Error getting leaderboard:', error);
-    if (error instanceof TitanBotError) throw error;
+  } catch (hata) {
+    logger.error('Liderlik tablosu alınırken hata oluştu:', hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to fetch leaderboard: ${error.message}`,
+      `Liderlik tablosu alınamadı: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not fetch the leaderboard at this time.'
+      'Şu anda liderlik tablosuna ulaşılamıyor.'
     );
   }
 }
 
-export function createLeaderboardEmbed(leaderboard, guild) {
+export function liderlikTablosuEmbedOlustur(liste, sunucu) {
   const embed = new EmbedBuilder()
-    .setTitle(`🏆 ${guild.name} Leaderboard`)
+    .setTitle(`🏆 ${sunucu.name} Liderlik Tablosu`)
     .setColor('#2ecc71')
     .setTimestamp();
     
-  if (!leaderboard || leaderboard.length === 0) {
-    embed.setDescription('No users on the leaderboard yet!');
+  if (!liste || liste.length === 0) {
+    embed.setDescription('Henüz liderlik tablosunda kimse yok!');
     return embed;
   }
   
-  const top3 = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
+  const ilk3 = liste.slice(0, 3);
+  const digerleri = liste.slice(3);
   
-  const top3Text = top3.map((user, index) => {
-    const medal = ['🥇', '🥈', '🥉'][index];
-    return `${medal} **#${user.rank}** ${user.username} - Level ${user.level} (${user.totalXp} XP)`;
+  const ilk3Metin = ilk3.map((kullanici, indeks) => {
+    const madalya = ['🥇', '🥈', '🥉'][indeks];
+    return `${madalya} **#${kullanici.rank}** ${kullanici.username} - Seviye ${kullanici.level} (${kullanici.totalXp} XP)`;
   }).join('\n');
   
-  const restText = rest.map(user => {
-    return `**#${user.rank}** ${user.username} - Level ${user.level} (${user.totalXp} XP)`;
+  const digerleriMetin = digerleri.map(kullanici => {
+    return `**#${kullanici.rank}** ${kullanici.username} - Seviye ${kullanici.level} (${kullanici.totalXp} XP)`;
   }).join('\n');
   
   embed.setDescription(
-    `**Top Members**\n${top3Text}${restText ? '\n\n' + restText : ''}`
+    `**En İyi Üyeler**\n${ilk3Metin}${digerleriMetin ? '\n\n' + digerleriMetin : ''}`
   );
   
   return embed;
 }
 
-export async function getLevelingConfig(client, guildId) {
+export async function seviyeAyarlariniGetir(client, sunucuId) {
   try {
-    const guildConfig = await getGuildConfig(client, guildId);
-    return guildConfig.leveling || {
+    const sunucuAyari = await getGuildConfig(client, sunucuId);
+    return sunucuAyari.leveling || {
       enabled: true,
       xpPerMessage: { min: 15, max: 25 },
       xpCooldown: 20,
-      levelUpMessage: '{user} has leveled up to level {level}!',
+      levelUpMessage: '{user} seviye atladı ve {level}. seviyeye ulaştı!',
       levelUpChannel: null,
       ignoredChannels: [],
       ignoredRoles: [],
@@ -163,13 +163,13 @@ export async function getLevelingConfig(client, guildId) {
       announceLevelUp: true,
       xpMultiplier: 1
     };
-  } catch (error) {
-    logger.error(`Error getting leveling config for guild ${guildId}:`, error);
+  } catch (hata) {
+    logger.error(`Sunucu ${sunucuId} için seviye ayarları alınırken hata oluştu:`, hata);
     return {
       enabled: true,
       xpPerMessage: { min: 15, max: 25 },
       xpCooldown: 20,
-      levelUpMessage: '{user} has leveled up to level {level}!',
+      levelUpMessage: '{user} seviye atladı ve {level}. seviyeye ulaştı!',
       levelUpChannel: null,
       ignoredChannels: [],
       ignoredRoles: [],
@@ -181,19 +181,19 @@ export async function getLevelingConfig(client, guildId) {
   }
 }
 
-export async function getUserLevelData(client, guildId, userId) {
+export async function kullaniciSeviyeVerisiGetir(client, sunucuId, kullaniciId) {
   try {
-    if (!guildId || !userId) {
+    if (!sunucuId || !kullaniciId) {
       throw new TitanBotError(
-        'Guild ID and User ID are required',
+        'Sunucu ID ve Kullanıcı ID gereklidir',
         ErrorTypes.VALIDATION
       );
     }
 
-    const key = getUserLevelKey(guildId, userId);
-    const data = await client.db.get(key);
+    const anahtar = getUserLevelKey(sunucuId, kullaniciId);
+    const veri = await client.db.get(anahtar);
     
-    if (!data) {
+    if (!veri) {
       return {
         xp: 0,
         level: 0,
@@ -204,257 +204,257 @@ export async function getUserLevelData(client, guildId, userId) {
     }
     
     return {
-      xp: Math.max(0, data.xp || 0),
-      level: Math.max(0, Math.min(data.level || 0, MAX_LEVEL)),
-      totalXp: Math.max(0, data.totalXp || 0),
-      lastMessage: data.lastMessage || 0,
-      rank: data.rank || 0
+      xp: Math.max(0, veri.xp || 0),
+      level: Math.max(0, Math.min(veri.level || 0, MAKS_SEVIYE)),
+      totalXp: Math.max(0, veri.totalXp || 0),
+      lastMessage: veri.lastMessage || 0,
+      rank: veri.rank || 0
     };
-  } catch (error) {
-    logger.error(`Error getting user level data for ${userId}:`, error);
-    if (error instanceof TitanBotError) throw error;
+  } catch (hata) {
+    logger.error(`Kullanıcı ${kullaniciId} için seviye verisi alınırken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to fetch user data: ${error.message}`,
+      `Kullanıcı verisi alınamadı: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not fetch level data at this time.'
+      'Şu anda seviye verisine ulaşılamıyor.'
     );
   }
 }
 
-export async function saveUserLevelData(client, guildId, userId, data) {
+export async function kullaniciSeviyeVerisiniKaydet(client, sunucuId, kullaniciId, veri) {
   try {
-    if (!guildId || !userId) {
+    if (!sunucuId || !kullaniciId) {
       throw new TitanBotError(
-        'Guild ID and User ID are required',
+        'Sunucu ID ve Kullanıcı ID gereklidir',
         ErrorTypes.VALIDATION
       );
     }
 
-    if (!data || typeof data !== 'object') {
+    if (!veri || typeof veri !== 'object') {
       throw new TitanBotError(
-        'Invalid user level data',
+        'Geçersiz kullanıcı seviye verisi',
         ErrorTypes.VALIDATION
       );
     }
 
-    const sanitizedData = {
-      xp: Math.max(0, Number(data.xp) || 0),
-      level: Math.max(0, Math.min(Number(data.level) || 0, MAX_LEVEL)),
-      totalXp: Math.max(0, Number(data.totalXp) || 0),
-      lastMessage: Number(data.lastMessage) || 0,
-      rank: Number(data.rank) || 0
+    const temizVeri = {
+      xp: Math.max(0, Number(veri.xp) || 0),
+      level: Math.max(0, Math.min(Number(veri.level) || 0, MAKS_SEVIYE)),
+      totalXp: Math.max(0, Number(veri.totalXp) || 0),
+      lastMessage: Number(veri.lastMessage) || 0,
+      rank: Number(veri.rank) || 0
     };
 
-    const key = getUserLevelKey(guildId, userId);
-    await client.db.set(key, sanitizedData);
-  } catch (error) {
-    logger.error(`Error saving user level data for ${userId}:`, error);
-    if (error instanceof TitanBotError) throw error;
+    const anahtar = getUserLevelKey(sunucuId, kullaniciId);
+    await client.db.set(anahtar, temizVeri);
+  } catch (hata) {
+    logger.error(`Kullanıcı ${kullaniciId} için seviye verisi kaydedilirken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to save user data: ${error.message}`,
+      `Kullanıcı verisi kaydedilemedi: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not save level data at this time.'
+      'Şu anda seviye verisi kaydedilemiyor.'
     );
   }
 }
 
-export async function saveLevelingConfig(client, guildId, config) {
+export async function seviyeAyarlariniKaydet(client, sunucuId, ayar) {
   try {
-    if (!guildId || !config) {
+    if (!sunucuId || !ayar) {
       throw new TitanBotError(
-        'Guild ID and config are required',
+        'Sunucu ID ve ayar gereklidir',
         ErrorTypes.VALIDATION
       );
     }
 
-    const guildConfig = await getGuildConfig(client, guildId);
+    const sunucuAyari = await getGuildConfig(client, sunucuId);
 
-    if (config.xpCooldown && (config.xpCooldown < 0 || config.xpCooldown > 3600)) {
+    if (ayar.xpCooldown && (ayar.xpCooldown < 0 || ayar.xpCooldown > 3600)) {
       throw new TitanBotError(
-        'XP cooldown must be between 0 and 3600 seconds',
+        'XP bekleme süresi 0 ile 3600 saniye arasında olmalıdır',
         ErrorTypes.VALIDATION,
-        'Cooldown must be between 0 and 3600 seconds.'
+        'Bekleme süresi 0 ile 3600 saniye arasında olmalıdır.'
       );
     }
 
-    if (config.xpRange && (config.xpRange.min < 1 || config.xpRange.max < 1 || config.xpRange.min > config.xpRange.max)) {
+    if (ayar.xpRange && (ayar.xpRange.min < 1 || ayar.xpRange.max < 1 || ayar.xpRange.min > ayar.xpRange.max)) {
       throw new TitanBotError(
-        'Invalid XP range configuration',
+        'Geçersiz XP aralığı ayarı',
         ErrorTypes.VALIDATION,
-        'Minimum XP must be less than maximum XP, and both must be positive.'
+        'Minimum XP maksimum XP\'den küçük olmalı ve her ikisi de pozitif olmalıdır.'
       );
     }
 
-    guildConfig.leveling = config;
-    await setGuildConfig(client, guildId, guildConfig);
+    sunucuAyari.leveling = ayar;
+    await setGuildConfig(client, sunucuId, sunucuAyari);
     
-    logger.info(`Leveling config updated for guild ${guildId}`);
-  } catch (error) {
-    logger.error(`Error saving leveling config for guild ${guildId}:`, error);
-    if (error instanceof TitanBotError) throw error;
+    logger.info(`Sunucu ${sunucuId} için seviye ayarları güncellendi`);
+  } catch (hata) {
+    logger.error(`Sunucu ${sunucuId} için seviye ayarları kaydedilirken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to save config: ${error.message}`,
+      `Ayarlar kaydedilemedi: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not save configuration at this time.'
+      'Şu anda ayarlar kaydedilemiyor.'
     );
   }
 }
 
-export async function addLevels(client, guildId, userId, levels) {
+export async function seviyeEkle(client, sunucuId, kullaniciId, miktar) {
   try {
-    const levelingConfig = await getLevelingConfig(client, guildId);
-    if (!levelingConfig?.enabled) {
+    const seviyeAyarlari = await seviyeAyarlariniGetir(client, sunucuId);
+    if (!seviyeAyarlari?.enabled) {
       throw new TitanBotError(
-        'Leveling system is disabled on this server',
+        'Seviye sistemi bu sunucuda devre dışı',
         ErrorTypes.CONFIGURATION,
-        'The leveling system is currently disabled on this server.'
+        'Seviye sistemi şu anda bu sunucuda kapalı.'
       );
     }
 
-    if (!Number.isInteger(levels) || levels <= 0) {
+    if (!Number.isInteger(miktar) || miktar <= 0) {
       throw new TitanBotError(
-        `Invalid level amount: ${levels}`,
+        `Geçersiz seviye miktarı: ${miktar}`,
         ErrorTypes.VALIDATION,
-        'You must add a positive number of levels.'
+        'Pozitif bir seviye miktarı eklemelisin.'
       );
     }
 
-    const userData = await getUserLevelData(client, guildId, userId);
-    const newLevel = userData.level + levels;
+    const kullaniciVerisi = await kullaniciSeviyeVerisiGetir(client, sunucuId, kullaniciId);
+    const yeniSeviye = kullaniciVerisi.level + miktar;
 
-    if (newLevel > MAX_LEVEL) {
+    if (yeniSeviye > MAKS_SEVIYE) {
       throw new TitanBotError(
-        `Level ${newLevel} exceeds maximum level ${MAX_LEVEL}`,
+        `Seviye ${yeniSeviye}, maksimum seviye olan ${MAKS_SEVIYE}'yi aşıyor`,
         ErrorTypes.VALIDATION,
-        `Maximum level is ${MAX_LEVEL}.`
+        `Maksimum seviye ${MAKS_SEVIYE}.`
       );
     }
 
-    const newXp = 0;
-    const newTotalXp = calculateTotalXp(newLevel, newXp);
+    const yeniXp = 0;
+    const yeniToplamXp = toplamXpHesapla(yeniSeviye, yeniXp);
 
-    userData.level = newLevel;
-    userData.xp = newXp;
-    userData.totalXp = newTotalXp;
+    kullaniciVerisi.level = yeniSeviye;
+    kullaniciVerisi.xp = yeniXp;
+    kullaniciVerisi.totalXp = yeniToplamXp;
 
-    await saveUserLevelData(client, guildId, userId, userData);
+    await kullaniciSeviyeVerisiniKaydet(client, sunucuId, kullaniciId, kullaniciVerisi);
     
-    logger.info(`Added ${levels} levels to user ${userId} in guild ${guildId}`);
-    return userData;
-  } catch (error) {
-    logger.error(`Error adding levels for user ${userId}:`, error);
-    if (error instanceof TitanBotError) throw error;
+    logger.info(`Kullanıcı ${kullaniciId} için ${miktar} seviye eklendi (Sunucu: ${sunucuId})`);
+    return kullaniciVerisi;
+  } catch (hata) {
+    logger.error(`Kullanıcı ${kullaniciId} için seviye eklenirken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to add levels: ${error.message}`,
+      `Seviye eklenemedi: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not add levels at this time.'
+      'Şu anda seviye eklenemiyor.'
     );
   }
 }
 
-export async function removeLevels(client, guildId, userId, levels) {
+export async function seviyeCikar(client, sunucuId, kullaniciId, miktar) {
   try {
-    const levelingConfig = await getLevelingConfig(client, guildId);
-    if (!levelingConfig?.enabled) {
+    const seviyeAyarlari = await seviyeAyarlariniGetir(client, sunucuId);
+    if (!seviyeAyarlari?.enabled) {
       throw new TitanBotError(
-        'Leveling system is disabled on this server',
+        'Seviye sistemi bu sunucuda devre dışı',
         ErrorTypes.CONFIGURATION,
-        'The leveling system is currently disabled on this server.'
+        'Seviye sistemi şu anda bu sunucuda kapalı.'
       );
     }
 
-    if (!Number.isInteger(levels) || levels <= 0) {
+    if (!Number.isInteger(miktar) || miktar <= 0) {
       throw new TitanBotError(
-        `Invalid level amount: ${levels}`,
+        `Geçersiz seviye miktarı: ${miktar}`,
         ErrorTypes.VALIDATION,
-        'You must remove a positive number of levels.'
+        'Pozitif bir seviye miktarı çıkarmalısın.'
       );
     }
 
-    const userData = await getUserLevelData(client, guildId, userId);
-    const newLevel = Math.max(MIN_LEVEL, userData.level - levels);
+    const kullaniciVerisi = await kullaniciSeviyeVerisiGetir(client, sunucuId, kullaniciId);
+    const yeniSeviye = Math.max(MIN_SEVIYE, kullaniciVerisi.level - miktar);
 
-    const newXp = 0;
-    const newTotalXp = calculateTotalXp(newLevel, newXp);
+    const yeniXp = 0;
+    const yeniToplamXp = toplamXpHesapla(yeniSeviye, yeniXp);
 
-    userData.level = newLevel;
-    userData.xp = newXp;
-    userData.totalXp = newTotalXp;
+    kullaniciVerisi.level = yeniSeviye;
+    kullaniciVerisi.xp = yeniXp;
+    kullaniciVerisi.totalXp = yeniToplamXp;
 
-    await saveUserLevelData(client, guildId, userId, userData);
+    await kullaniciSeviyeVerisiniKaydet(client, sunucuId, kullaniciId, kullaniciVerisi);
     
-    logger.info(`Removed ${levels} levels from user ${userId} in guild ${guildId}`);
-    return userData;
-  } catch (error) {
-    logger.error(`Error removing levels for user ${userId}:`, error);
-    if (error instanceof TitanBotError) throw error;
+    logger.info(`Kullanıcı ${kullaniciId} üzerinden ${miktar} seviye çıkarıldı (Sunucu: ${sunucuId})`);
+    return kullaniciVerisi;
+  } catch (hata) {
+    logger.error(`Kullanıcı ${kullaniciId} için seviye çıkarılırken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to remove levels: ${error.message}`,
+      `Seviye çıkarılamadı: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not remove levels at this time.'
+      'Şu anda seviye çıkarılamıyor.'
     );
   }
 }
 
-export async function setUserLevel(client, guildId, userId, level) {
+export async function seviyeAyarla(client, sunucuId, kullaniciId, seviye) {
   try {
-    const levelingConfig = await getLevelingConfig(client, guildId);
-    if (!levelingConfig?.enabled) {
+    const seviyeAyarlari = await seviyeAyarlariniGetir(client, sunucuId);
+    if (!seviyeAyarlari?.enabled) {
       throw new TitanBotError(
-        'Leveling system is disabled on this server',
+        'Seviye sistemi bu sunucuda devre dışı',
         ErrorTypes.CONFIGURATION,
-        'The leveling system is currently disabled on this server.'
+        'Seviye sistemi şu anda bu sunucuda kapalı.'
       );
     }
 
-    if (!Number.isInteger(level) || level < MIN_LEVEL || level > MAX_LEVEL) {
+    if (!Number.isInteger(seviye) || seviye < MIN_SEVIYE || seviye > MAKS_SEVIYE) {
       throw new TitanBotError(
-        `Invalid level: ${level}`,
+        `Geçersiz seviye: ${seviye}`,
         ErrorTypes.VALIDATION,
-        `Level must be between ${MIN_LEVEL} and ${MAX_LEVEL}.`
+        `Seviye ${MIN_SEVIYE} ile ${MAKS_SEVIYE} arasında olmalıdır.`
       );
     }
 
-    const userData = await getUserLevelData(client, guildId, userId);
+    const kullaniciVerisi = await kullaniciSeviyeVerisiGetir(client, sunucuId, kullaniciId);
     
-    const newXp = 0;
-    const newTotalXp = calculateTotalXp(level, newXp);
+    const yeniXp = 0;
+    const yeniToplamXp = toplamXpHesapla(seviye, yeniXp);
 
-    userData.level = level;
-    userData.xp = newXp;
-    userData.totalXp = newTotalXp;
+    kullaniciVerisi.level = seviye;
+    kullaniciVerisi.xp = yeniXp;
+    kullaniciVerisi.totalXp = yeniToplamXp;
 
-    await saveUserLevelData(client, guildId, userId, userData);
+    await kullaniciSeviyeVerisiniKaydet(client, sunucuId, kullaniciId, kullaniciVerisi);
     
-    logger.info(`Set level for user ${userId} to ${level} in guild ${guildId}`);
-    return userData;
-  } catch (error) {
-    logger.error(`Error setting level for user ${userId}:`, error);
-    if (error instanceof TitanBotError) throw error;
+    logger.info(`Kullanıcı ${kullaniciId} seviyesi ${seviye} olarak ayarlandı (Sunucu: ${sunucuId})`);
+    return kullaniciVerisi;
+  } catch (hata) {
+    logger.error(`Kullanıcı ${kullaniciId} için seviye ayarlanırken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
     throw new TitanBotError(
-      `Failed to set level: ${error.message}`,
+      `Seviye ayarlanamadı: ${hata.message}`,
       ErrorTypes.DATABASE,
-      'Could not set level at this time.'
+      'Şu anda seviye ayarlanamıyor.'
     );
   }
 }
 
-export async function deleteUserLevelData(client, guildId, userId) {
+export async function kullaniciSeviyeVerisiniSil(client, sunucuId, kullaniciId) {
   try {
-    if (!guildId || !userId) {
+    if (!sunucuId || !kullaniciId) {
       throw new TitanBotError(
-        'Guild ID and User ID are required',
+        'Sunucu ID ve Kullanıcı ID gereklidir',
         ErrorTypes.VALIDATION
       );
     }
 
-    const key = getUserLevelKey(guildId, userId);
-    await client.db.delete(key);
+    const anahtar = getUserLevelKey(sunucuId, kullaniciId);
+    await client.db.delete(anahtar);
     
-    logger.debug(`Deleted level data for user ${userId} in guild ${guildId}`);
-  } catch (error) {
-    logger.error(`Error deleting level data for user ${userId}:`, error);
-    if (error instanceof TitanBotError) throw error;
-    logger.warn(`Could not delete level data for user ${userId} in guild ${guildId}`);
+    logger.debug(`Kullanıcı ${kullaniciId} için seviye verisi silindi (Sunucu: ${sunucuId})`);
+  } catch (hata) {
+    logger.error(`Kullanıcı ${kullaniciId} için seviye verisi silinirken hata:`, hata);
+    if (hata instanceof TitanBotError) throw hata;
+    logger.warn(`Kullanıcı ${kullaniciId} için seviye verisi silinemedi (Sunucu: ${sunucuId})`);
   }
 }
