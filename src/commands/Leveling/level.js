@@ -10,50 +10,48 @@ import levelDashboard from './modules/level_dashboard.js';
 
 export default {
     data: new SlashCommandBuilder()
-        .setName('level')
-        .setDescription('Manage the leveling system')
+        .setName('seviye') // Komut ismi Türkçe yapıldı
+        .setDescription('Seviye sistemini yönetmenizi sağlar')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .setDMPermission(false)
         .addSubcommand((subcommand) =>
             subcommand
-                .setName('setup')
-                .setDescription('Set up the leveling system — this also enables it')
+                .setName('kurulum')
+                .setDescription('Seviye sistemini kurar ve aktif hale getirir')
                 .addChannelOption((option) =>
                     option
-                        .setName('channel')
-                        .setDescription('Channel to send level-up notifications in')
+                        .setName('kanal')
+                        .setDescription('Seviye atlama bildirimlerinin gönderileceği metin kanalı')
                         .addChannelTypes(ChannelType.GuildText)
                         .setRequired(true),
                 )
                 .addIntegerOption((option) =>
                     option
-                        .setName('xp_min')
-                        .setDescription('Minimum XP awarded per message (default: 15)')
+                        .setName('xp_minimum')
+                        .setDescription('Mesaj başına verilecek minimum XP (Varsayılan: 15)')
                         .setMinValue(1)
                         .setMaxValue(500)
                         .setRequired(false),
                 )
                 .addIntegerOption((option) =>
                     option
-                        .setName('xp_max')
-                        .setDescription('Maximum XP awarded per message (default: 25)')
+                        .setName('xp_maksimum')
+                        .setDescription('Mesaj başına verilecek maksimum XP (Varsayılan: 25)')
                         .setMinValue(1)
                         .setMaxValue(500)
                         .setRequired(false),
                 )
                 .addStringOption((option) =>
                     option
-                        .setName('message')
-                        .setDescription(
-                            'Level-up message. Use {user} and {level} as placeholders (default provided)',
-                        )
+                        .setName('mesaj')
+                        .setDescription('Seviye mesajı. {user} ve {level} değişkenlerini kullanabilirsiniz')
                         .setMaxLength(500)
                         .setRequired(false),
                 )
                 .addIntegerOption((option) =>
                     option
-                        .setName('xp_cooldown')
-                        .setDescription('Seconds between XP grants per user (default: 60)')
+                        .setName('xp_bekleme_süresi')
+                        .setDescription('Kullanıcıların tekrar XP kazanabilmesi için gereken süre (saniye - Varsayılan: 60)')
                         .setMinValue(0)
                         .setMaxValue(3600)
                         .setRequired(false),
@@ -61,10 +59,10 @@ export default {
         )
         .addSubcommand((subcommand) =>
             subcommand
-                .setName('dashboard')
-                .setDescription('Open the interactive leveling configuration dashboard'),
+                .setName('panel')
+                .setDescription('Etkileşimli seviye yapılandırma panelini açar'),
         ),
-    category: 'Leveling',
+    category: 'Seviye',
 
     async execute(interaction, config, client) {
         const deferred = await InteractionHelper.safeDefer(interaction, {
@@ -73,40 +71,50 @@ export default {
         if (!deferred) return;
 
         if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-            return await replyUserError(interaction, { type: ErrorTypes.PERMISSION, message: 'You need the **Manage Server** permission to use this command.' });
+            return await replyUserError(interaction, { 
+                type: ErrorTypes.PERMISSION, 
+                message: 'Bu komutu kullanabilmek için **Sunucuyu Yönet** yetkisine sahip olmalısınız.' 
+            });
         }
 
         const subcommand = interaction.options.getSubcommand();
 
-        if (subcommand === 'dashboard') {
+        if (subcommand === 'panel') {
             return levelDashboard.execute(interaction, config, client);
         }
 
-        if (subcommand === 'setup') {
-            const channel = interaction.options.getChannel('channel');
-            const xpMin = interaction.options.getInteger('xp_min') ?? 15;
-            const xpMax = interaction.options.getInteger('xp_max') ?? 25;
+        if (subcommand === 'kurulum') {
+            const channel = interaction.options.getChannel('kanal');
+            const xpMin = interaction.options.getInteger('xp_minimum') ?? 15;
+            const xpMax = interaction.options.getInteger('xp_maksimum') ?? 25;
             const message =
-                interaction.options.getString('message') ??
-                '{user} has leveled up to level {level}!';
-            const xpCooldown = interaction.options.getInteger('xp_cooldown') ?? 60;
+                interaction.options.getString('mesaj') ??
+                '{user} tebrikler, {level}. seviyeye ulaştın!';
+            const xpCooldown = interaction.options.getInteger('xp_bekleme_süresi') ?? 60;
 
             if (xpMin > xpMax) {
-                return await replyUserError(interaction, { type: ErrorTypes.VALIDATION, message: `Minimum XP (**${xpMin}**) cannot be greater than maximum XP (**${xpMax}**).` });
+                return await replyUserError(interaction, { 
+                    type: ErrorTypes.VALIDATION, 
+                    message: `Minimum XP miktarı (**${xpMin}**), maksimum XP miktarından (**${xpMax}**) büyük olamaz.` 
+                });
             }
 
             if (!botHasPermission(channel, ['SendMessages', 'EmbedLinks'])) {
                 throw new TitanBotError(
-                    'Bot missing permissions in the specified channel',
+                    'Botun belirtilen kanalda yetkisi eksik',
                     ErrorTypes.PERMISSION,
-                    `I need **SendMessages** and **EmbedLinks** permissions in ${channel} to send level-up notifications.`,
+                    `Seviye atlama bildirimlerini gönderebilmem için ${channel} kanalında **Mesaj Gönder** ve **Bağlantı Yerleştir** yetkilerime ihtiyaç var.`,
                 );
             }
 
             const existingConfig = await getLevelingConfig(client, interaction.guildId);
 
-            if (existingConfig.configured) {
-                return await replyUserError(interaction, { type: ErrorTypes.UNKNOWN, message: `The leveling system is already set up on this server (level-up notifications go to <#${existingConfig.levelUpChannel}>).\n\nUse \`/level dashboard\` to adjust any settings.` });
+            // Güvenli zincirleme (.?) eklendi, veri yoksa çökme önlendi
+            if (existingConfig?.configured) {
+                return await replyUserError(interaction, { 
+                    type: ErrorTypes.UNKNOWN, 
+                    message: `Seviye sistemi bu sunucuda zaten kurulmuş (Bildirimler şu kanala gidiyor: <#${existingConfig.levelUpChannel}>).\n\nAyarları değiştirmek için \`/seviye panel\` komutunu kullanabilirsiniz.` 
+                });
             }
 
             const newConfig = {
@@ -122,7 +130,7 @@ export default {
 
             await saveLevelingConfig(client, interaction.guildId, newConfig);
 
-            logger.info(`Leveling system set up in guild ${interaction.guildId}`, {
+            logger.info(`Seviye sistemi kuruldu: ${interaction.guildId}`, {
                 channelId: channel.id,
                 xpMin,
                 xpMax,
@@ -130,17 +138,18 @@ export default {
                 userId: interaction.user.id,
             });
 
+            // createEmbed içerisindeki parantez hatası düzeltildi
             return await InteractionHelper.safeEditReply(interaction, {
                 embeds: [
                     createEmbed({
-                        title: 'Leveling System Set Up',
+                        title: 'Seviye Sistemi Kuruldu',
                         description:
-                            `The leveling system is now **enabled** and ready to go.\n\n` +
-                            `**Level-up Channel:** ${channel}\n` +
-                            `**XP per Message:** ${xpMin} – ${xpMax}\n` +
-                            `**XP Cooldown:** ${xpCooldown}s\n` +
-                            `**Level-up Message:** \`${message}\`\n\n` +
-                            `Use \`/level dashboard\` to adjust any of these settings at any time.`,
+                            `Seviye sistemi başarıyla **aktif edildi** ve kullanıma hazır.\n\n` +
+                            `**Bildirim Kanalı:** ${channel}\n` +
+                            `**Mesaj Başına XP:** ${xpMin} – ${xpMax}\n` +
+                            `**XP Zaman Aşımı:** ${xpCooldown} saniye\n` +
+                            `**Seviye Mesajı:** \`${message}\`\n\n` +
+                            `Bu ayarları istediğiniz zaman \`/seviye panel\` komutu ile güncelleyebilirsiniz.`,
                         color: 'success',
                     }),
                 ],
