@@ -5,10 +5,10 @@ import {
 } from '../../../handlers/help/helpButtons.js';
 
 const paginationIds = [
-  'help-page_first',
-  'help-page_prev',
-  'help-page_next',
-  'help-page_last',
+  'Yardım-Sayfası-İlk',
+  'Yardım-Sayfası-Geri',
+  'Yardım-Sayfası-İleri',
+  'Yardım-Sayfası-Son',
 ];
 
 const paginationInteractions = paginationIds.map((name) => ({
