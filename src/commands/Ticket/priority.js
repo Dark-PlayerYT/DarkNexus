@@ -1,5 +1,5 @@
 import { getColor } from '../../config/bot.js';
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { successEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
@@ -10,22 +10,22 @@ import { updateTicketPriority } from '../../services/ticket.js';
 export default {
     data: new SlashCommandBuilder()
         .setName("priority")
-        .setDescription("Sets the priority level for the current support ticket.")
+        .setDescription("Mevcut destek talebinin öncelik seviyesini ayarlar.")
         .addStringOption((option) =>
             option
                 .setName("level")
-                .setDescription("The priority level for the ticket.")
+                .setDescription("Bilet için öncelik seviyesi.")
                 .setRequired(true)
                 .addChoices(
-                    { name: "Urgent", value: "urgent" },
-                    { name: "High", value: "high" },
-                    { name: "Medium", value: "medium" },
-                    { name: "Low", value: "low" },
-                    { name: "None", value: "none" },
+                    { name: "Acil", value: "urgent" },
+                    { name: "Yüksek", value: "high" },
+                    { name: "Orta", value: "medium" },
+                    { name: "Düşük", value: "low" },
+                    { name: "Yok", value: "none" },
                 ),
-            )
+        )
         .setDMPermission(false),
-    category: "Ticket",
+    category: "Bilet",
 
     async execute(interaction, guildConfig, client) {
         const deferred = await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
@@ -35,21 +35,36 @@ export default {
 
         const permissionContext = await getTicketPermissionContext({ client, interaction });
         if (!permissionContext.ticketData) {
-            return await replyUserError(interaction, { type: ErrorTypes.VALIDATION, message: 'This command can only be used in a valid ticket channel.' });
+            return await replyUserError(interaction, { 
+                type: ErrorTypes.VALIDATION, 
+                message: 'Bu komut yalnızca geçerli bir bilet kanalında kullanılabilir.' 
+            });
         }
 
         if (!permissionContext.canManageTicket) {
-            return await replyUserError(interaction, { type: ErrorTypes.PERMISSION, message: 'You need the `Manage Channels` permission or the configured `Ticket Staff Role` to change ticket priority.' });
+            return await replyUserError(interaction, { 
+                type: ErrorTypes.PERMISSION, 
+                message: 'Bilet önceliğini değiştirmek için **Kanalları Yönet** yetkisine veya yapılandırılmış **Bilet Yetkili** rolüne sahip olmalısınız.' 
+            });
         }
 
         const priorityLevel = interaction.options.getString("level");
         await updateTicketPriority(interaction.channel, priorityLevel, interaction.user);
 
+        // Öncelik seviyesini şık bir şekilde geri bildirim olarak sunuyoruz
+        const priorityLabels = {
+            urgent: "ACİL",
+            high: "YÜKSEK",
+            medium: "ORTA",
+            low: "DÜŞÜK",
+            none: "YOK"
+        };
+
         await InteractionHelper.safeEditReply(interaction, {
             embeds: [
                 successEmbed(
-                    "Priority Updated",
-                    `Ticket priority set to **${priorityLevel.toUpperCase()}**.`,
+                    "Öncelik Güncellendi",
+                    `Bilet önceliği **${priorityLabels[priorityLevel]}** olarak ayarlandı.`,
                 ),
             ],
         });
