@@ -2,46 +2,49 @@ import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
 import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getLeaderboard, getLevelingConfig, getXpForLevel } from '../../services/leveling/leveling.js';
-
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+
 export default {
   data: new SlashCommandBuilder()
-    .setName('leaderboard')
-    .setDescription("Shows the server's level leaderboard")
+    .setName('sıralama') // Komut ismi Türkçe yapıldı
+    .setDescription('Sunucunun seviye sıralamasını gösterir')
     .setDMPermission(false),
-  category: 'Leveling',
+  category: 'Seviye',
 
   async execute(interaction, config, client) {
-    await InteractionHelper.safeDefer(interaction);
-
+    // Önce seviye sisteminin açık olup olmadığını kontrol ediyoruz (Defer etmeden önce)
     const levelingConfig = await getLevelingConfig(client, interaction.guildId);
 
     if (!levelingConfig?.enabled) {
-      await InteractionHelper.safeEditReply(interaction, {
+      // Defer edilmediği için reply doğrudan Ephemeral (gizli) olarak çalışır
+      await interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setColor('#f1c40f')
-            .setDescription('The leveling system is currently disabled on this server.')
+            .setDescription('Seviye sistemi şu anda bu sunucuda devre dışı bırakılmış.')
         ],
         flags: MessageFlags.Ephemeral
       });
       return;
     }
 
+    // Sistem açıksa, veritabanı sorgusu sürebileceği için şimdi güvenli şekilde defer ediyoruz (Herkes görebilir)
+    await InteractionHelper.safeDefer(interaction);
+
     const leaderboard = await getLeaderboard(client, interaction.guildId, 10);
 
     if (leaderboard.length === 0) {
       throw new TitanBotError(
-        'No leaderboard data found',
+        'Sıralama verisi bulunamadı',
         ErrorTypes.DATABASE,
-        'No level data found yet. Start chatting to gain XP!'
+        'Henüz sunucuda kayıtlı bir seviye verisi yok. Tecrübe puanı (XP) kazanmak için sohbete başlayın!'
       );
     }
 
     const embed = new EmbedBuilder()
-      .setTitle('Level Leaderboard')
+      .setTitle('Seviye Sıralaması')
       .setColor('#2ecc71')
-      .setDescription("Top 10 most active members in this server:")
+      .setDescription('Bu sunucudaki en aktif ilk 10 üye:')
       .setTimestamp();
 
     const leaderboardText = await Promise.all(
@@ -57,19 +60,19 @@ export default {
           else if (index === 2) rankPrefix = '🥉';
           else rankPrefix = `**${index + 1}.**`;
 
-          return `${rankPrefix} ${userMention} - Level ${user.level} (${user.xp}/${xpForNextLevel} XP)`;
+          return `${rankPrefix} ${userMention} - Seviye ${user.level} (${user.xp}/${xpForNextLevel} XP)`;
         } catch {
-          return `**${index + 1}.** Error loading user ${user.userId}`;
+          return `**${index + 1}.** Kullanıcı yüklenirken hata oluştu: ${user.userId}`;
         }
       })
     );
 
     embed.addFields({
-      name: 'Rankings',
+      name: 'Sıralama Listesi',
       value: leaderboardText.join('\n')
     });
 
     await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
-    logger.debug(`Leaderboard displayed for guild ${interaction.guildId}`);
+    logger.debug(`Sıralama listesi sunucu için görüntülendi: ${interaction.guildId}`);
   }
 };
