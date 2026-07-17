@@ -6,7 +6,7 @@ export const shopItems = [
         description: 'Allows 1 extra use of the `/work` command.',
         type: 'consumable',
         maxQuantity: 5,
-cooldown: 86400000,
+        cooldown: 86400000,
         effect: {
             type: 'command_boost',
             command: 'work',
@@ -43,7 +43,7 @@ cooldown: 86400000,
         price: 15000,
         description: 'A special role granting a fancy color and a 10% daily bonus.',
         type: 'role',
-roleId: null,
+        roleId: null,
         effect: {
             type: 'daily_bonus',
             multiplier: 1.1
@@ -159,6 +159,7 @@ export function validatePurchase(itemId, userData) {
     const inventory = userData.inventory || {};
     const upgrades = userData.upgrades || {};
 
+    // 1. Tüketilebilir (Consumable) Eşya Kontrolü
     if (item.type === 'consumable' && item.maxQuantity) {
         const currentQuantity = inventory[itemId] || 0;
         if (currentQuantity >= item.maxQuantity) {
@@ -169,18 +170,19 @@ export function validatePurchase(itemId, userData) {
         }
     }
 
+    // 2. Geliştirme (Upgrade) Seviye Kontrolü - DÜZELTİLDİ
     if (item.type === 'upgrade' && item.maxLevel) {
-        
-        if (upgrades[itemId]) {
+        const currentLevel = upgrades[itemId] || 0;
+        if (currentLevel >= item.maxLevel) {
             return { 
                 valid: false, 
-                reason: `You've already purchased ${item.name}` 
+                reason: `You've already reached the maximum level (${item.maxLevel}) for ${item.name}` 
             };
         }
     }
 
+    // 3. Alet (Tool) Kontrolü
     if (item.type === 'tool') {
-        
         const currentQuantity = inventory[itemId] || 0;
         if (itemId !== 'bank_note' && currentQuantity > 0) {
             return { 
@@ -190,6 +192,7 @@ export function validatePurchase(itemId, userData) {
         }
     }
 
+    // 4. Rol (Role) Kontrolü
     if (item.type === 'role' && item.roleId) {
         if (userData.roles?.includes(item.roleId)) {
             return { 
