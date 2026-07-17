@@ -1,16 +1,17 @@
-import { getColor } from '../../config/bot.js';
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { successEmbed } from '../../utils/embeds.js';
 import { logger } from '../../utils/logger.js';
 import { replyUserError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { getTicketPermissionContext } from '../../utils/ticket/ticketPermissions.js';
 import { claimTicket } from '../../services/ticket.js';
+
 export default {
     data: new SlashCommandBuilder()
         .setName("claim")
-        .setDescription("Claims an open ticket, assigning it to you.")
+        .setDescription("Açık bir bilet talebini üzerine alır ve sorumluluğu üstlenir.")
         .setDMPermission(false),
+    category: "Bilet",
 
     async execute(interaction, guildConfig, client) {
         const deferred = await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
@@ -20,11 +21,18 @@ export default {
 
         const permissionContext = await getTicketPermissionContext({ client, interaction });
         if (!permissionContext.ticketData) {
-            return await replyUserError(interaction, { type: ErrorTypes.VALIDATION, message: 'This command can only be used in a valid ticket channel.' });
+            return await replyUserError(interaction, { 
+                type: ErrorTypes.VALIDATION, 
+                message: 'Bu komut yalnızca geçerli bir bilet kanalında kullanılabilir.' 
+            });
         }
 
+        // Yetki kontrolü: Kullanıcı bilet sorumluluğunu alabilir mi?
         if (!permissionContext.canManageTicket) {
-            return await replyUserError(interaction, { type: ErrorTypes.PERMISSION, message: 'You need the `Manage Channels` permission or the configured `Ticket Staff Role` to claim tickets.' });
+            return await replyUserError(interaction, { 
+                type: ErrorTypes.PERMISSION, 
+                message: 'Bilet sorumluluğunu alabilmek için **Kanalları Yönet** yetkisine veya yapılandırılmış **Bilet Yetkili** rolüne sahip olmalısınız.' 
+            });
         }
 
         await claimTicket(interaction.channel, interaction.user);
@@ -32,8 +40,8 @@ export default {
         await InteractionHelper.safeEditReply(interaction, {
             embeds: [
                 successEmbed(
-                    "Ticket Claimed!",
-                    "You have successfully claimed this ticket.",
+                    "Bilet Sorumluluğu Alındı",
+                    "Bu biletin sorumluluğunu başarıyla üstlendiniz.",
                 ),
             ],
         });
