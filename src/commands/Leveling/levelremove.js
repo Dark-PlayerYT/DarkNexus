@@ -4,87 +4,92 @@ import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { checkUserPermissions } from '../../utils/permissionGuard.js';
 import { removeLevels, getUserLevelData, getLevelingConfig } from '../../services/leveling/leveling.js';
 import { createEmbed } from '../../utils/embeds.js';
-
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+
 export default {
   data: new SlashCommandBuilder()
-    .setName('levelremove')
-    .setDescription('Remove levels from a user')
+    .setName('seviye-düşür') // Komut ismi Türkçe yapıldı
+    .setDescription('Bir kullanıcının seviyesini azaltır')
     .addUserOption((option) =>
       option
-        .setName('user')
-        .setDescription('The user to remove levels from')
+        .setName('kullanıcı')
+        .setDescription('Seviyesi düşürülecek kullanıcı')
         .setRequired(true)
     )
     .addIntegerOption((option) =>
       option
-        .setName('levels')
-        .setDescription('Number of levels to remove')
+        .setName('miktar')
+        .setDescription('Düşürülecek seviye miktarı')
         .setRequired(true)
         .setMinValue(1)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false),
-  category: 'Leveling',
+  category: 'Seviye',
 
   async execute(interaction, config, client) {
-    await InteractionHelper.safeDefer(interaction);
-
+    // 1. Yetki kontrolü (Defer etmeden önce, yetki yoksa doğrudan gizli cevap dönebilsin)
     const hasPermission = await checkUserPermissions(
       interaction,
       PermissionFlagsBits.ManageGuild,
-      'You need ManageGuild permission to use this command.'
+      'Bu komutu kullanabilmek için Sunucuyu Yönet yetkisine sahip olmalısınız.'
     );
     if (!hasPermission) return;
 
+    // 2. Seviye sisteminin durumunu kontrol ediyoruz
     const levelingConfig = await getLevelingConfig(client, interaction.guildId);
     if (!levelingConfig?.enabled) {
-      await InteractionHelper.safeEditReply(interaction, {
+      await interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setColor('#f1c40f')
-            .setDescription('The leveling system is currently disabled on this server.')
+            .setDescription('Seviye sistemi şu anda bu sunucuda devre dışı bırakılmış.')
         ],
         flags: MessageFlags.Ephemeral
       });
       return;
     }
 
-    const targetUser = interaction.options.getUser('user');
-    const levelsToRemove = interaction.options.getInteger('levels');
+    // 3. Kontroller geçince güvenli şekilde defer ediyoruz
+    await InteractionHelper.safeDefer(interaction);
+
+    const targetUser = interaction.options.getUser('kullanıcı');
+    const levelsToRemove = interaction.options.getInteger('miktar');
 
     const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
     if (!member) {
       throw new TitanBotError(
-        `User ${targetUser.id} not found in this guild`,
+        `Kullanıcı ${targetUser.id} sunucuda bulunamadı`,
         ErrorTypes.USER_INPUT,
-        'The specified user is not in this server.'
+        'Belirtilen kullanıcı bu sunucuda bulunmuyor.'
       );
     }
 
+    // Kullanıcının mevcut verisini kontrol ediyoruz
     const userData = await getUserLevelData(client, interaction.guildId, targetUser.id);
-    if (userData.level === 0) {
+    if (!userData || userData.level === 0) {
       throw new TitanBotError(
-        `User ${targetUser.id} is already at minimum level`,
+        `Kullanıcı ${targetUser.id} zaten minimum seviyede`,
         ErrorTypes.VALIDATION,
-        `${targetUser.tag} is already at level 0 and cannot have levels removed.`
+        `${targetUser.tag} zaten 0. seviyede olduğu için seviyesi daha fazla düşürülemez.`
       );
     }
 
+    // Seviye düşürme servisini çağırıyoruz
     const updatedData = await removeLevels(client, interaction.guildId, targetUser.id, levelsToRemove);
 
     await InteractionHelper.safeEditReply(interaction, {
       embeds: [
         createEmbed({
-          title: 'Levels Removed',
-          description: `Successfully removed ${levelsToRemove} levels from ${targetUser.tag}.\n**New Level:** ${updatedData.level}`,
+          title: 'Seviye Düşürüldü',
+          description: `${targetUser} kullanıcısından başarıyla **${levelsToRemove}** seviye düşürüldü.\n**Yeni Seviyesi:** ${updatedData.level}`,
           color: 'success'
         })
       ]
     });
 
     logger.info(
-      `[ADMIN] User ${interaction.user.tag} removed ${levelsToRemove} levels from ${targetUser.tag} in guild ${interaction.guildId}`
+      `[ADMIN] ${interaction.user.tag}, ${interaction.guildId} sunucusunda ${targetUser.tag} kullanıcısından ${levelsToRemove} seviye düşürdü.`
     );
   }
 };
