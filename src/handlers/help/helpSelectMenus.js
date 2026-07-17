@@ -10,11 +10,11 @@ import { handleInteractionError } from '../../utils/errorHandler.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BACK_BUTTON_ID = "help-back-to-main";
-const ALL_COMMANDS_ID = "help-all-commands";
-const PAGINATION_PREFIX = "help-page";
-const CATEGORY_SELECT_ID = "help-category-select";
-const FOOTER_TEXT = "Made with ❤️";
+const BACK_BUTTON_ID = "Yardım-Ana-Menüye-Dön";
+const ALL_COMMANDS_ID = "Yardım-Tüm-Komutlar";
+const PAGINATION_PREFIX = "Yardım-Sayfa";
+const CATEGORY_SELECT_ID = "Yardım-Kategori-Seçim";
+const FOOTER_TEXT = "@Dark_Official Tarafından Yapıldı";
 const SUBCOMMAND_TYPE = 1;
 const SUBCOMMAND_GROUP_TYPE = 2;
 
@@ -54,7 +54,7 @@ function buildHelpEntries(command, category) {
     }
 
     const baseName = commandData.name;
-    const baseDescription = commandData.description || "No description";
+    const baseDescription = commandData.description || "Açıklama bulunmuyor";
     const options = commandData.options || [];
 
     const entries = [];
@@ -150,7 +150,7 @@ async function createCategoryCommandsMenu(category, client) {
         }
     } catch (error) {
         logger.error(
-            `Error reading commands from category ${category}:`,
+            `Kategori komutları okunurken hata oluştu ${category}:`,
             error,
         );
     }
@@ -166,14 +166,14 @@ async function createCategoryCommandsMenu(category, client) {
             }
         }
     } catch (error) {
-        logger.error('Error fetching registered commands:', error);
+        logger.error('Kayıtlı komutlar çekilirken hata oluştu:', error);
     }
 
     const embed = createEmbed({
-        title: `${icon} ${categoryName} Commands`,
+        title: `${icon} ${categoryName} Komutları`,
         description: categoryCommands.length > 0
-            ? `Click any command mention below to use it.`
-            : `No commands found in the **${categoryName}** category.`
+            ? `Kullanmak istediğiniz komutun üzerine tıklayabilirsiniz.`
+            : `**${categoryName}** kategorisinde herhangi bir komut bulunamadı.`
     });
 
     if (categoryCommands.length > 0) {
@@ -190,7 +190,7 @@ async function createCategoryCommandsMenu(category, client) {
         const maxLength = 1000;
         if (commandMentions.length <= maxLength) {
             embed.addFields({
-                name: "Commands",
+                name: "Komutlar",
                 value: commandMentions,
                 inline: false,
             });
@@ -211,7 +211,7 @@ async function createCategoryCommandsMenu(category, client) {
 
             chunks.forEach((chunk, index) => {
                 embed.addFields({
-                    name: `Commands (Part ${index + 1})`,
+                    name: `Komutlar (Bölüm ${index + 1})`,
                     value: chunk,
                     inline: false,
                 });
@@ -224,7 +224,7 @@ async function createCategoryCommandsMenu(category, client) {
 
     const backButton = createButton(
         BACK_BUTTON_ID,
-        "Back",
+        "Geri Dön",
         "primary",
         "⬅️",
         false,
@@ -281,7 +281,7 @@ export async function createAllCommandsMenu(page = 1, client) {
             }
         } catch (error) {
             logger.error(
-                `Error reading commands from category ${category}:`,
+                `Kategori komutları okunurken hata oluştu ${category}:`,
                 error,
             );
         }
@@ -298,7 +298,7 @@ export async function createAllCommandsMenu(page = 1, client) {
             }
         }
     } catch (error) {
-        logger.error('Error fetching registered commands:', error);
+        logger.error('Kayıtlı komutlar çekilirken hata oluştu:', error);
     }
 
     const totalPages = Math.ceil(allCommands.length / commandsPerPage);
@@ -307,8 +307,8 @@ export async function createAllCommandsMenu(page = 1, client) {
     const pageCommands = allCommands.slice(startIndex, endIndex);
 
     const embed = createEmbed({
-        title: "📋 All Commands",
-        description: `Browse every available command in one list. Use the page buttons below to move through the full set.`
+        title: "📋 Tüm Komutlar",
+        description: `Mevcut olan tüm komutlara tek bir listeden göz atın. Sayfalar arasında geçiş yapmak için aşağıdaki butonları kullanabilirsiniz.`
     });
 
     embed.setFooter({ text: FOOTER_TEXT });
@@ -334,7 +334,7 @@ export async function createAllCommandsMenu(page = 1, client) {
             if (!chunk) continue;
 
             embed.addFields({
-                name: i === 0 ? `Commands (Page ${page})` : "Commands (cont.)",
+                name: i === 0 ? `Komutlar (Sayfa ${page})` : "Komutlar (Devamı)",
                 value: chunk,
                 inline: columnCount > 1,
             });
@@ -354,7 +354,7 @@ export async function createAllCommandsMenu(page = 1, client) {
 
     const backButton = createButton(
         BACK_BUTTON_ID,
-        "Back",
+        "Geri Dön",
         "primary",
         "⬅️",
         false,
@@ -396,7 +396,7 @@ export const helpCategorySelectMenu = {
             }
         } catch (error) {
             if (error?.code === 40060 || error?.code === 10062) {
-                logger.warn('Help category select interaction already acknowledged or expired.', {
+                logger.warn('Yardım kategorisi seçim etkileşimi zaten yanıtlandı veya süresi doldu.', {
                     event: 'interaction.help.select.unavailable',
                     errorCode: String(error.code),
                     customId: interaction.customId,
