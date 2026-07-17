@@ -1,110 +1,113 @@
 import { logger } from '../../utils/logger.js';
 import { getLevelingConfig, getUserLevelData, saveLevelingConfig } from './leveling.js';
-
 import { getUserLevelPrefix } from '../../utils/database/keys.js';
 
-async function listLevelUserIds(client, guildId) {
+// Veritabanındaki seviye verisi olan kullanıcıların listesini çeker
+async function seviyeKullaniciIdleriniListele(client, sunucuId) {
     if (!client.db?.list) return [];
 
-    const prefixes = [getUserLevelPrefix(guildId), `${guildId}:leveling:users:`];
-    const userIds = new Set();
+    const onEkler = [getUserLevelPrefix(sunucuId), `${sunucuId}:leveling:users:`];
+    const kullaniciIdleri = new Set();
 
-    for (const prefix of prefixes) {
-        let keys = await client.db.list(prefix).catch(() => []);
-        if (!Array.isArray(keys)) {
-            keys = typeof keys === 'object' && keys !== null ? Object.keys(keys) : [];
+    for (const onEk of onEkler) {
+        let anahtarlar = await client.db.list(onEk).catch(() => []);
+        if (!Array.isArray(anahtarlar)) {
+            anahtarlar = typeof anahtarlar === 'object' && anahtarlar !== null ? Object.keys(anahtarlar) : [];
         }
 
-        for (const key of keys) {
-            if (!key.startsWith(prefix)) continue;
-            const userId = key.slice(prefix.length);
-            if (/^\d{17,19}$/.test(userId)) userIds.add(userId);
+        for (const anahtar of anahtarlar) {
+            if (!anahtar.startsWith(onEk)) continue;
+            const kullaniciId = anahtar.slice(onEk.length);
+            if (/^\d{17,19}$/.test(kullaniciId)) kullaniciIdleri.add(kullaniciId);
         }
     }
 
-    return [...userIds];
+    return [...kullaniciIdleri];
 }
 
-async function tryAwardRole(member, roleId, level) {
-    const role = member.guild.roles.cache.get(roleId) || (await member.guild.roles.fetch(roleId).catch(() => null));
-    if (!role || member.roles.cache.has(roleId)) return false;
+// Kullanıcıya rolü vermeyi dener
+async function rolOduluVer(uye, rolId, seviye) {
+    const rol = uye.guild.roles.cache.get(rolId) || (await uye.guild.roles.fetch(rolId).catch(() => null));
+    if (!rol || uye.roles.cache.has(rolId)) return false;
 
-    await member.roles.add(role, `Level ${level} reward (startup sync)`);
+    await uye.roles.add(rol, `Level ${seviye} ödülü (başlangıç senkronizasyonu)`);
     return true;
 }
 
-export async function reconcileLevelRoles(client, guildId = null) {
-    const summary = {
-        scannedGuilds: 0,
-        prunedRewardEntries: 0,
-        rolesReAwarded: 0,
-        errors: 0,
+// Seviye rollerini kontrol eder ve eksikleri tamamlar
+export async function seviyeRolleriniEsitle(client, sunucuId = null) {
+    const ozet = {
+        tarananSunucular: 0,
+        silinenOdulKayitlari: 0,
+        verilenRoller: 0,
+        hatalar: 0,
     };
 
-    const guilds = guildId
-        ? [client.guilds.cache.get(guildId)].filter(Boolean)
+    const sunucular = sunucuId
+        ? [client.guilds.cache.get(sunucuId)].filter(Boolean)
         : [...client.guilds.cache.values()];
 
-    for (const guild of guilds) {
-        summary.scannedGuilds += 1;
+    for (const sunucu of sunucular) {
+        ozet.tarananSunucular += 1;
 
         try {
-            const cfg = await getLevelingConfig(client, guild.id);
-            if (cfg.enabled === false) continue;
+            const ayar = await getLevelingConfig(client, sunucu.id);
+            if (ayar.enabled === false) continue;
 
-            const rewards = { ...(cfg.roleRewards || {}) };
-            if (Object.keys(rewards).length === 0) continue;
+            const oduller = { ...(ayar.roleRewards || {}) };
+            if (Object.keys(oduller).length === 0) continue;
 
-            let configChanged = false;
+            let ayarDegistiMi = false;
 
-            for (const [level, roleId] of Object.entries(rewards)) {
-                const role =
-                    guild.roles.cache.get(roleId) || (await guild.roles.fetch(roleId).catch(() => null));
-                if (!role) {
-                    delete rewards[level];
-                    configChanged = true;
-                    summary.prunedRewardEntries += 1;
+            // Silinmiş rolleri temizle
+            for (const [seviye, rolId] of Object.entries(oduller)) {
+                const rol =
+                    sunucu.roles.cache.get(rolId) || (await sunucu.roles.fetch(rolId).catch(() => null));
+                if (!rol) {
+                    delete oduller[seviye];
+                    ayarDegistiMi = true;
+                    ozet.silinenOdulKayitlari += 1;
                     logger.warn(
-                        `Removed missing level ${level} reward role ${roleId} from config in guild ${guild.id}`,
+                        `Sunucu ${sunucu.id} içerisinde, ${seviye}. seviye için tanımlı ${rolId} rolü bulunamadı ve silindi.`,
                     );
                 }
             }
 
-            if (configChanged) {
-                cfg.roleRewards = rewards;
-                await saveLevelingConfig(client, guild.id, cfg);
+            if (ayarDegistiMi) {
+                ayar.roleRewards = oduller;
+                await saveLevelingConfig(client, sunucu.id, ayar);
             }
 
-            if (Object.keys(rewards).length === 0) continue;
+            if (Object.keys(oduller).length === 0) continue;
 
-            const userIds = await listLevelUserIds(client, guild.id);
+            const kullaniciIdleri = await seviyeKullaniciIdleriniListele(client, sunucu.id);
 
-            for (const userId of userIds) {
-                const levelData = await getUserLevelData(client, guild.id, userId);
-                const member = await guild.members.fetch(userId).catch(() => null);
-                if (!member) continue;
+            for (const kullaniciId of kullaniciIdleri) {
+                const seviyeVerisi = await getUserLevelData(client, sunucu.id, kullaniciId);
+                const uye = await sunucu.members.fetch(kullaniciId).catch(() => null);
+                if (!uye) continue;
 
-                for (const [levelStr, roleId] of Object.entries(rewards)) {
-                    const requiredLevel = Number(levelStr);
-                    if (!Number.isFinite(requiredLevel) || levelData.level < requiredLevel) continue;
+                for (const [seviyeMetni, rolId] of Object.entries(oduller)) {
+                    const gerekenSeviye = Number(seviyeMetni);
+                    if (!Number.isFinite(gerekenSeviye) || seviyeVerisi.level < gerekenSeviye) continue;
 
                     try {
-                        const awarded = await tryAwardRole(member, roleId, requiredLevel);
-                        if (awarded) summary.rolesReAwarded += 1;
-                    } catch (awardError) {
-                        summary.errors += 1;
+                        const verildiMi = await rolOduluVer(uye, rolId, gerekenSeviye);
+                        if (verildiMi) ozet.verilenRoller += 1;
+                    } catch (hata) {
+                        ozet.hatalar += 1;
                         logger.warn(
-                            `Could not re-award level ${requiredLevel} role to ${userId} in guild ${guild.id}:`,
-                            awardError.message,
+                            `Sunucu ${sunucu.id} içerisinde ${kullaniciId} kullanıcısına ${gerekenSeviye}. seviye rolü verilemedi:`,
+                            hata.message,
                         );
                     }
                 }
             }
-        } catch (error) {
-            summary.errors += 1;
-            logger.warn(`Level role sync failed for guild ${guild.id}:`, error.message);
+        } catch (hata) {
+            ozet.hatalar += 1;
+            logger.warn(`Sunucu ${sunucu.id} için seviye rolü eşitlemesi başarısız:`, hata.message);
         }
     }
 
-    return summary;
+    return ozet;
 }
