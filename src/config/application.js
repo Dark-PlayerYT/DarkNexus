@@ -23,7 +23,7 @@ const appConfig = {
     ...botConfig,
     token: process.env.DISCORD_TOKEN || process.env.TOKEN,
     clientId: process.env.CLIENT_ID,
-    // Kurulum/rehber uyumluluğu için tutulmuştur; komut kaydı için doğrudan kullanılmaz.
+    // Kurulum ve rehber uyumluluğu için tutulmuştur; komut kaydı için doğrudan kullanılmaz.
     guildId: process.env.GUILD_ID,
 
     shop: {
@@ -38,7 +38,7 @@ const appConfig = {
   },
 
   logging: {
-    level: process.env.LOG_LEVEL || "info",
+    level: process.env.LOG_LEVEL || "bilgi", // Yönetici log seviyesi varsayılanı "bilgi" yapıldı
     file: {
       enabled: process.env.LOG_TO_FILE === "true",
       path: path.join(__dirname, "../../logs"),
@@ -54,7 +54,7 @@ const appConfig = {
     sentry: {
       enabled: !!process.env.SENTRY_DSN,
       dsn: process.env.SENTRY_DSN,
-      environment: process.env.NODE_ENV || "development",
+      environment: process.env.NODE_ENV || "geliştirme", // Hata izleme ortam adı Türkçeleştirildi
     },
   },
 
@@ -78,7 +78,7 @@ const appConfig = {
     music: botConfig.features?.music ?? true,
   },
 
-  env: process.env.NODE_ENV || "development",
+  env: process.env.NODE_ENV || "geliştirme", // Çalışma ortamı varsayılanı Türkçeleştirildi
   isProduction: process.env.NODE_ENV === "production",
   isDevelopment: process.env.NODE_ENV !== "production",
 };
