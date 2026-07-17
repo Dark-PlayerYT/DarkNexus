@@ -1,14 +1,15 @@
-import { SlashCommandBuilder, PermissionFlagsBits, PermissionsBitField, ChannelType } from 'discord.js';
-import { createEmbed, errorEmbed, successEmbed } from '../../utils/embeds.js';
+import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { errorEmbed, successEmbed } from '../../utils/embeds.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { logger } from '../../utils/logger.js';
+
 export default {
     data: new SlashCommandBuilder()
         .setName("firstmsg")
-        .setDescription("Get a link to the first message in this channel")
+        .setDescription("Bu kanaldaki ilk mesajın bağlantısını gönderir")
         .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),
-    category: "Utility",
+    category: "Faydalı",
 
     async execute(interaction, config, client) {
         const deferSuccess = await InteractionHelper.safeDefer(interaction);
@@ -21,6 +22,7 @@ export default {
             return;
         }
 
+        // Discord API'sinden kanalın en eski mesajını çekiyoruz
         const messages = await interaction.channel.messages.fetch({
             limit: 1,
             after: '1',
@@ -36,7 +38,9 @@ export default {
                 guildId: interaction.guildId
             });
             return await InteractionHelper.safeEditReply(interaction, {
-                embeds: [successEmbed('First Message', "No messages found in this channel!")],
+                embeds: [
+                    errorEmbed('İlk Mesaj Bulunamadı', "Bu kanalda hiç mesaj bulunamadı!")
+                ],
             });
         }
 
@@ -45,8 +49,8 @@ export default {
         await InteractionHelper.safeEditReply(interaction, {
             embeds: [
                 successEmbed(
-                    "First Message in #" + interaction.channel.name,
-                    `Message Link: ${messageLink}`
+                    `#${interaction.channel.name} Kanalındaki İlk Mesaj`,
+                    `Kanalın başlangıç noktasına gitmek için aşağıdaki bağlantıyı kullanabilirsiniz:\n\n🔗 **[İlk Mesaja Git](${messageLink})**`
                 ),
             ],
         });
