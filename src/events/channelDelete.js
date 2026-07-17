@@ -11,29 +11,28 @@ import { logger } from '../utils/logger.js';
 export default {
     name: 'channelDelete',
     async execute(channel, client) {
-        
-        if (channel.type === 0 && channel.guild) {
-            try {
-                const ticketData = await getTicketData(channel.guild.id, channel.id);
-                if (ticketData && ticketData.status === 'open') {
-                    ticketData.status = 'deleted';
-                    ticketData.closedAt = new Date().toISOString();
-                    await saveTicketData(channel.guild.id, channel.id, ticketData);
-                    logger.info(`Ticket channel ${channel.id} was manually deleted in guild ${channel.guild.id}, marked as deleted`);
-                }
-            } catch (err) {
-                logger.warn(`Could not clean up ticket record for deleted channel ${channel.id}:`, err);
-            }
-        }
-
-if (channel.type !== 2 && channel.type !== 4) {
-            return;
-        }
+        if (!channel.guild) return;
 
         const guildId = channel.guild.id;
 
         try {
-            
+            // 1. TICKET KANALI KONTROLÜ (Metin Kanalları - Type 0)
+            if (channel.type === 0) {
+                try {
+                    const ticketData = await getTicketData(guildId, channel.id);
+                    if (ticketData && ticketData.status === 'open') {
+                        ticketData.status = 'deleted';
+                        ticketData.closedAt = new Date().toISOString();
+                        await saveTicketData(guildId, channel.id, ticketData);
+                        logger.info(`Ticket channel ${channel.id} was manually deleted in guild ${guildId}, marked as deleted`);
+                    }
+                } catch (err) {
+                    logger.warn(`Could not clean up ticket record for deleted channel ${channel.id}:`, err);
+                }
+            }
+
+            // 2. SAYAÇ (SERVER STATS) KONTROLÜ
+            // Sayaçlar metin, ses veya kategori kanalı olabilir, bu yüzden tip kısıtlaması yapmadan kontrol ediyoruz
             const counters = await getServerCounters(client, guildId);
             const orphanedCounter = counters.find(c => c.channelId === channel.id);
             
@@ -50,45 +49,49 @@ if (channel.type !== 2 && channel.type !== 4) {
                 }
             }
 
-            const config = await getJoinToCreateConfig(client, guildId);
+            // 3. JOIN TO CREATE KONTROLLERİ (Ses Kanalları - Type 2 veya Kategoriler - Type 4)
+            if (channel.type === 2 || channel.type === 4) {
+                const config = await getJoinToCreateConfig(client, guildId);
 
-            if (!config.enabled) {
-                return;
-            }
+                if (config && config.enabled) {
+                    // Tetikleyici kanal silindiyse
+                    if (config.triggerChannels && config.triggerChannels.includes(channel.id)) {
+                        logger.info(`Join to Create trigger channel ${channel.name} (${channel.id}) was deleted, removing from configuration`);
+                        
+                        const success = await removeJoinToCreateTrigger(client, guildId, channel.id);
+                        if (success) {
+                            logger.info(`Successfully removed trigger channel ${channel.id} from Join to Create configuration`);
+                        } else {
+                            logger.warn(`Failed to remove trigger channel ${channel.id} from Join to Create configuration`);
+                        }
+                    }
 
-            if (config.triggerChannels.includes(channel.id)) {
-                logger.info(`Join to Create trigger channel ${channel.name} (${channel.id}) was deleted, removing from configuration`);
-                
-                const success = await removeJoinToCreateTrigger(client, guildId, channel.id);
-                if (success) {
-                    logger.info(`Successfully removed trigger channel ${channel.id} from Join to Create configuration`);
-                } else {
-                    logger.warn(`Failed to remove trigger channel ${channel.id} from Join to Create configuration`);
-                }
-            }
+                    // Geçici oluşturulmuş oda silindiyse
+                    if (config.temporaryChannels && config.temporaryChannels[channel.id]) {
+                        logger.info(`Join to Create temporary channel ${channel.name} (${channel.id}) was deleted, cleaning up database`);
+                        
+                        const success = await unregisterTemporaryChannel(client, guildId, channel.id);
+                        if (success) {
+                            logger.info(`Successfully cleaned up temporary channel ${channel.id} from database`);
+                        } else {
+                            logger.warn(`Failed to cleanup temporary channel ${channel.id} from database`);
+                        }
+                    }
 
-            if (config.temporaryChannels[channel.id]) {
-                logger.info(`Join to Create temporary channel ${channel.name} (${channel.id}) was deleted, cleaning up database`);
-                
-                const success = await unregisterTemporaryChannel(client, guildId, channel.id);
-                if (success) {
-                    logger.info(`Successfully cleaned up temporary channel ${channel.id} from database`);
-                } else {
-                    logger.warn(`Failed to cleanup temporary channel ${channel.id} from database`);
-                }
-            }
-
-            if (config.categoryId === channel.id) {
-                logger.warn(`Category ${channel.name} (${channel.id}) used for Join to Create temporary channels was deleted. Join to Create will be disabled.`);
-                
-                config.categoryId = null;
-                config.enabled = false;
-                
-                try {
-                    await client.db.set(`guild:${guildId}:jointocreate`, config);
-                    logger.info(`Disabled Join to Create for guild ${guildId} due to category deletion`);
-                } catch (error) {
-                    logger.error(`Failed to disable Join to Create for guild ${guildId}:`, error);
+                    // Sistemin bağlı olduğu kategori silindiyse
+                    if (config.categoryId === channel.id) {
+                        logger.warn(`Category ${channel.name} (${channel.id}) used for Join to Create temporary channels was deleted. Join to Create will be disabled.`);
+                        
+                        config.categoryId = null;
+                        config.enabled = false;
+                        
+                        try {
+                            await client.db.set(`guild:${guildId}:jointocreate`, config);
+                            logger.info(`Disabled Join to Create for guild ${guildId} due to category deletion`);
+                        } catch (error) {
+                            logger.error(`Failed to disable Join to Create for guild ${guildId}:`, error);
+                        }
+                    }
                 }
             }
 
