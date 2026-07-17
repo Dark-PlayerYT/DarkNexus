@@ -4,17 +4,22 @@ import { playQuery, replyMusicSuccess } from '../../services/music/musicActions.
 
 export default {
     slashOnly: true,
-    category: 'Music',
+    category: 'Müzik',
     data: new SlashCommandBuilder()
         .setName('play')
-        .setDescription('Play a song or add it to the queue')
+        .setDescription('Bir şarkı çalar veya sıraya ekler.')
         .addStringOption((opt) =>
-            opt.setName('query').setDescription('Song name or URL').setRequired(true),
+            opt.setName('sorgu')
+               .setDescription('Şarkı adı veya bağlantısı (URL)')
+               .setRequired(true),
         ),
 
     async execute(interaction, config, client) {
         await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
-        const result = await playQuery(client, interaction, interaction.options.getString('query'));
+        
+        const result = await playQuery(client, interaction, interaction.options.getString('sorgu'));
+        
+        // İşlem sonucuna göre kullanıcıya yanıt ver
         await replyMusicSuccess(interaction, result.embed);
     },
 };
