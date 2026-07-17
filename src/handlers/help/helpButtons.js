@@ -4,9 +4,10 @@ import { createInitialHelpMenu } from '../../commands/Core/help.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
 import { logger } from '../../utils/logger.js';
 
-const BACK_BUTTON_ID = "help-back-to-main";
-const PAGINATION_PREFIX = "help-page";
-const BUG_REPORT_BUTTON_ID = "help-bug-report";
+// ID ve Prefix kısımlarını tamamen Türkçe karakterli ve baş harfleri büyük olacak şekilde düzenledik
+const BACK_BUTTON_ID = "Yardım-Ana-Menüye-Dön";
+const PAGINATION_PREFIX = "Yardım-Sayfa";
+const BUG_REPORT_BUTTON_ID = "Yardım-Hata-Bildir";
 
 export const helpBackButton = {
     name: BACK_BUTTON_ID,
@@ -23,7 +24,7 @@ export const helpBackButton = {
             });
         } catch (error) {
             if (error?.code === 40060 || error?.code === 10062) {
-                logger.warn('Help back button interaction already acknowledged or expired.', {
+                logger.warn('Yardım geri butonu etkileşimi zaten yanıtlandı veya süresi doldu.', {
                     event: 'interaction.help.button.unavailable',
                     errorCode: String(error.code),
                     customId: interaction.customId,
@@ -41,25 +42,24 @@ export const helpBugReportButton = {
     name: BUG_REPORT_BUTTON_ID,
     async execute(interaction, client) {
         const githubButton = new ButtonBuilder()
-            .setLabel('🐛 Report Bug on GitHub')
+            .setLabel('💬 Yetkililere Bildir & Destek Al')
             .setStyle(ButtonStyle.Link)
-            .setURL('https://github.com/codebymitch/TitanBot/issues');
+            .setURL('https://discord.gg/QnWNz2dKCE');
 
         const bugRow = new ActionRowBuilder().addComponents(githubButton);
 
         const bugReportEmbed = createEmbed({
-            title: '🐛 Bug Report',
-            description: 'Found a bug? Please report it on our GitHub Issues page!\n\n' +
-                '**When reporting a bug, please include:**\n' +
-                '• 📝 Detailed description of the issue\n' +
-                '• 📋 Steps to reproduce the problem\n' +
-                '• 📸 Screenshots if applicable\n' +
-                '• 💻 Your bot version and environment\n\n' +
-                'This helps us fix issues faster and more effectively!',
+            title: '🐛 Yardım - Hata Bildirimi',
+            description: 'Bir hata mı buldunuz? Lütfen bu durumu hemen **sunucu yetkililerimize** veya destek sunucumuz üzerinden bizlere bildirin!\n\n' +
+                '**Hata bildirirken yetkililerimize şunları iletmeyi unutmayın:**\n' +
+                '• 📝 Sorunun detaylı açıklaması\n' +
+                '• 📋 Hatayı hangi komutla veya nasıl aldığınızın adımları\n' +
+                '• 📸 Varsa ekran görüntüleri veya hata kodları\n\n' +
+                'Bizlere bildireceğiniz her hata, **Dark Nexus** kalitesini daha da arttırmamıza yardımcı olur!',
             color: 'error'
         });
         bugReportEmbed.setFooter({
-            text: 'TitanBot Bug Reporting System',
+            text: 'Dark Nexus - Hata Bildirim Sistemi',
             iconURL: client.user.displayAvatarURL()
         });
         bugReportEmbed.setTimestamp();
@@ -77,7 +77,7 @@ function getPaginationInfo(components) {
         for (const component of row.components || []) {
             if (component.customId === `${PAGINATION_PREFIX}_page`) {
                 const label = component.label || '';
-                const match = label.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+                const match = label.match(/(?:Page|Sayfa)\s+(\d+)\s+(?:of|\/)\s+(\d+)/i) || label.match(/(\d+)\s*\/\s*(\d+)/);
                 if (match) {
                     return {
                         currentPage: Number(match[1]),
@@ -124,7 +124,7 @@ export const helpPaginationButton = {
             await interaction.editReply({ embeds, components });
         } catch (error) {
             if (error?.code === 40060 || error?.code === 10062) {
-                logger.warn('Help pagination interaction already acknowledged or expired.', {
+                logger.warn('Yardım sayfalama etkileşimi zaten yanıtlandı veya süresi doldu.', {
                     event: 'interaction.help.pagination.unavailable',
                     errorCode: String(error.code),
                     customId: interaction.customId,
