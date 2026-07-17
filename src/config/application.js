@@ -3,6 +3,7 @@ import path from "path";
 import botConfig, { validateConfig } from "./bot.js";
 import { shopConfig as shop } from "./shop/index.js";
 import { pgConfig } from "./database/postgres.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,7 +23,7 @@ const appConfig = {
     ...botConfig,
     token: process.env.DISCORD_TOKEN || process.env.TOKEN,
     clientId: process.env.CLIENT_ID,
-    // Retained for tutorial/setup compatibility; not used for command registration.
+    // Kurulum/rehber uyumluluğu için tutulmuştur; komut kaydı için doğrudan kullanılmaz.
     guildId: process.env.GUILD_ID,
 
     shop: {
@@ -31,7 +32,7 @@ const appConfig = {
     },
   },
 
-  // PostgreSQL configuration - Primary production database
+  // PostgreSQL Yapılandırması - Birincil Üretim Veritabanı
   postgresql: {
     ...pgConfig,
   },
@@ -51,7 +52,7 @@ const appConfig = {
       timestamp: true,
     },
     sentry: {
-      enabled: process.env.SENTRY_DSN ? true : false,
+      enabled: !!process.env.SENTRY_DSN,
       dsn: process.env.SENTRY_DSN,
       environment: process.env.NODE_ENV || "development",
     },
