@@ -4,27 +4,29 @@ import { getConfirmationButtons } from '../../utils/components.js';
 import { logger } from '../../utils/logger.js';
 
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+
 export default {
     slashOnly: true,
     data: new SlashCommandBuilder()
         .setName('wipedata')
-        .setDescription('Delete all your personal data from the bot (irreversible)'),
+        .setDescription('Tüm kişisel verilerinizi DarkNexus üzerinden kalıcı olarak siler'), // Komut açıklaması Türkçe yapıldı
 
     async execute(interaction, guildConfig, client) {
         const warningMessage = 
-            `⚠️ **THIS ACTION IS IRREVERSIBLE!** ⚠️\n\n` +
-            `This will permanently delete **ALL** your data from this server including:\n` +
-            `• 💰 Economy balance (wallet & bank)\n` +
-            `• 📊 Levels and XP\n` +
-            `• 🎒 Inventory items\n` +
-            `• 🛍️ Shop purchases\n` +
-            `• 🎂 Birthday information\n` +
-            `• 🔢 Counter data\n` +
-            `• 📋 All other personal data\n\n` +
-            `**This cannot be undone. Are you absolutely sure?**`;
+            `⚠️ **BU İŞLEM GERİ ALINAMAZ!** ⚠️\n\n` +
+            `Bu işlem, bu sunucudaki **TÜM** verilerinizi kalıcı olarak silecektir. Silinecek veriler:\n` +
+            `• 💰 Ekonomi bakiyesi (cüzdan ve banka)\n` +
+            `• 📊 Seviye ve XP (Deneyim puanı)\n` +
+            `• 🎒 Envanter eşyaları\n` +
+            `• 🛍️ Market alışverişleri\n` +
+            `• 🎂 Doğum günü bilgileri\n` +
+            `• 🔢 Sayaç verileri\n` +
+            `• 📋 Diğer tüm kişisel verileriniz\n\n` +
+            `**Bu işlem geri döndürülemez. Devam etmek istediğinizden kesinlikle emin misiniz?**`;
 
-        const embed = warningEmbed('Wipe All Data', warningMessage);
+        const embed = warningEmbed('Tüm Verileri Sıfırla', warningMessage);
 
+        // Onay butonlarını Türkçe etiketlerle almak için 'wipedata' ID'si gönderiliyor
         const confirmButtons = getConfirmationButtons('wipedata');
 
         await InteractionHelper.safeReply(interaction, {
