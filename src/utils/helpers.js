@@ -8,7 +8,8 @@ export function getPriorityMap() {
 
     for (const [key, config] of Object.entries(priorities)) {
         map[key] = {
-            name: `${config.emoji} ${config.label.toUpperCase()}`,
+            // Türkçe karakterlerin (ı-I, i-İ, ş-Ş vb.) düzgün büyümesi için toLocaleUpperCase('tr-TR') kullanıldı
+            name: `${config.emoji} ${config.label.toLocaleUpperCase('tr-TR')}`,
             color: config.color,
             emoji: config.emoji,
             label: config.label,
